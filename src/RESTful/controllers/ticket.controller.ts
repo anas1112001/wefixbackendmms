@@ -200,6 +200,53 @@ export const getTicketStatistics = asyncHandler(async (req: AuthRequest, res: Re
     total: totalCount,
   });
 
+  // Find "Completed" status
+  const completedStatus = ticketStatuses.find(t => 
+    t.name.toLowerCase().trim() === 'completed'
+  );
+
+  console.log(`Completed status found:`, completedStatus ? { id: completedStatus.id, name: completedStatus.name } : null);
+
+  // Count completed tickets by type
+  const correctiveCompleted = correctiveType && completedStatus
+    ? await Ticket.count({
+        where: {
+          companyId: companyId,
+          ticketTypeId: correctiveType.id,
+          ticketStatusId: completedStatus.id,
+          isDeleted: false,
+        },
+      })
+    : 0;
+
+  const preventiveCompleted = preventiveType && completedStatus
+    ? await Ticket.count({
+        where: {
+          companyId: companyId,
+          ticketTypeId: preventiveType.id,
+          ticketStatusId: completedStatus.id,
+          isDeleted: false,
+        },
+      })
+    : 0;
+
+  const emergencyCompleted = emergencyType && completedStatus
+    ? await Ticket.count({
+        where: {
+          companyId: companyId,
+          ticketTypeId: emergencyType.id,
+          ticketStatusId: completedStatus.id,
+          isDeleted: false,
+        },
+      })
+    : 0;
+
+  console.log(`Completed ticket counts by type:`, {
+    corrective: correctiveCompleted,
+    preventive: preventiveCompleted,
+    emergency: emergencyCompleted,
+  });
+
   // Count by status
   const statusCounts: Record<string, number> = {};
   for (const status of ticketStatuses) {
@@ -217,9 +264,18 @@ export const getTicketStatistics = asyncHandler(async (req: AuthRequest, res: Re
     message: 'Ticket statistics retrieved successfully',
     data: {
       byType: {
-        corrective: correctiveCount,
-        preventive: preventiveCount,
-        emergency: emergencyCount,
+        corrective: {
+          total: correctiveCount,
+          completed: correctiveCompleted,
+        },
+        preventive: {
+          total: preventiveCount,
+          completed: preventiveCompleted,
+        },
+        emergency: {
+          total: emergencyCount,
+          completed: emergencyCompleted,
+        },
         total: correctiveCount + preventiveCount + emergencyCount,
       },
       byStatus: statusCounts,
