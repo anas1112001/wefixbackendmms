@@ -67,7 +67,11 @@ export const refreshAccessToken = asyncHandler(async (req: AuthRequest, res: Res
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const secretKey = process.env.JWT_SECRET;
+    if (!secretKey) {
+      throw new AppError('JWT_SECRET must be set in environment variables', 500, 'CONFIGURATION_ERROR');
+    }
+    const decoded = jwt.verify(token, secretKey);
     const user = await userRepository.validateRefreshToken(decoded['email']);
 
     if (!user) {

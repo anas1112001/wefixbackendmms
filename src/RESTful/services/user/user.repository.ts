@@ -92,7 +92,11 @@ class UserRepository {
 
   private async _getUserByToken(token: string): Promise<UserOrm | null> {
     try {
-      const decoded = jwt.verify(token, process.env.SECRET_KEY);
+      const secretKey = process.env.JWT_SECRET;
+      if (!secretKey) {
+        throw new Error('JWT_SECRET must be set in environment variables');
+      }
+      const decoded = jwt.verify(token, secretKey);
 
       const userEmail = decoded['email'];
 

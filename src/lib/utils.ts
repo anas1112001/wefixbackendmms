@@ -62,8 +62,13 @@ export const getUserFullName = function (): string {
 
 
 export const generateToken = function (user: any): string {
-  const secretKey = process.env.SECRET_KEY;
-  const expiresIn = '1d';
+  const secretKey = process.env.JWT_SECRET;
+  
+  if (!secretKey) {
+    throw new Error('JWT_SECRET must be set in environment variables');
+  }
+
+  const expiresIn = process.env.JWT_EXPIRES_IN || '1d';
 
   const payload = {
     email: user.email,
@@ -75,7 +80,12 @@ export const generateToken = function (user: any): string {
 }
 
 export const generateRefreshToken = function (user: any): string {
-  const refreshTokenSecretKey = process.env.SECRET_KEY;
+  const refreshTokenSecretKey = process.env.JWT_SECRET;
+  
+  if (!refreshTokenSecretKey) {
+    throw new Error('JWT_SECRET must be set in environment variables');
+  }
+
   const expiresIn = '7d';
 
   const payload = {

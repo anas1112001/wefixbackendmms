@@ -14,8 +14,8 @@ export const ormConfig = {
 }
 
 export const apiConfig = {
-  jwtSecret: process.env.SECRET_KEY,
-  jwtExpiresIn: '1d',
+  jwtSecret: process.env.JWT_SECRET,
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
   jwtRefreshExpiresIn: '7d',
   port: process.env.PORT || 4000,
   nodeEnv: process.env.NODE_ENV || 'development',

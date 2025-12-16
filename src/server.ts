@@ -1,4 +1,5 @@
 import 'reflect-metadata'
+import dotenv from 'dotenv'
 import express, { Application } from 'express'
 import fs from 'fs';
 import https from 'https';
@@ -13,6 +14,9 @@ import { orm, ORM } from './db/orm'
 import apiRoutes from './RESTful/routes';
 import { errorHandler } from './RESTful/middleware/error.middleware';
 import { openApiSpec } from './RESTful/docs/openapi';
+
+// Load environment variables
+dotenv.config({ path: '.env' })
 
 export class Server {
   private app: express.Application
@@ -129,21 +133,27 @@ export class Server {
 
   private listen() {
     const isDevelopment = process.env.NODE_ENV !== 'production'
+    const domainKeyPath = path.join(__dirname, '..', 'domain.key');
+    const domainCertPath = path.join(__dirname, '..', 'domain.crt');
+    const hasSSLCertificates = fs.existsSync(domainKeyPath) && fs.existsSync(domainCertPath);
     
-    if (isDevelopment) {
-      // Use HTTP for development
+    if (isDevelopment || !hasSSLCertificates) {
+      // Use HTTP for development or if SSL certificates are not available
       this.app.listen(this.port, (): void => {
         console.log('--------------------------------------------------------------')
         console.log(`🚀RESTful API Server is running on http://localhost:${this.port}`);
         console.log(`📚 API Documentation: http://localhost:${this.port}/docs`);
         console.log(`📄 OpenAPI Spec: http://localhost:${this.port}/api-docs.json`);
+        if (!hasSSLCertificates && !isDevelopment) {
+          console.log(`⚠️  SSL certificates not found, using HTTP instead of HTTPS`);
+        }
         console.log('--------------------------------------------------------------')
       });
     } else {
-      // Use HTTPS for production
+      // Use HTTPS for production when certificates are available
       const httpsOptions = {
-        key: fs.readFileSync('domain.key'),
-        cert: fs.readFileSync('domain.crt')
+        key: fs.readFileSync(domainKeyPath),
+        cert: fs.readFileSync(domainCertPath)
       };
 
       https.createServer(httpsOptions, this.app).listen({ port: this.port }, (): void => {

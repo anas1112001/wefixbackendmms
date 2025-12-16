@@ -19,7 +19,11 @@ export const authenticateToken = async (
       return res.status(401).json({ message: 'Access token required' });
     }
 
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const secretKey = process.env.JWT_SECRET;
+    if (!secretKey) {
+      return res.status(500).json({ message: 'JWT_SECRET must be set in environment variables' });
+    }
+    const decoded = jwt.verify(token, secretKey);
     const userEmail = decoded['email'];
 
     const user = await User.findOne({ where: { email: userEmail } });
@@ -51,7 +55,11 @@ export const optionalAuth = async (
     const token = authHeader && authHeader.split(' ')[1];
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.SECRET_KEY);
+      const secretKey = process.env.JWT_SECRET;
+    if (!secretKey) {
+      return res.status(500).json({ message: 'JWT_SECRET must be set in environment variables' });
+    }
+    const decoded = jwt.verify(token, secretKey);
       const userEmail = decoded['email'];
       const user = await User.findOne({ where: { email: userEmail } });
       if (user) {
