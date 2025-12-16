@@ -4,6 +4,7 @@
   "description": "",
   "main": "server.ts",
   "scripts": {
+    "build": "tsc",
     "dev": "concurrently --kill-others \"tsc -w\" \"nodemon -q -w dist dist/server.js\"",
     "lint": "yarn lint:fix",
     "lint:fix": "eslint --ext .ts . --fix",
