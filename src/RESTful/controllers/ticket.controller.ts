@@ -249,17 +249,37 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
     throw new AppError('Ticket not found or access denied', 404, 'NOT_FOUND');
   }
 
+  // Fetch tool names if tools array exists
+  let toolsWithNames: any[] = [];
+  if (ticket.tools && ticket.tools.length > 0) {
+    const toolLookups = await Lookup.findAll({
+      where: {
+        id: { [Op.in]: ticket.tools },
+        category: LookupCategory.TOOL,
+        isActive: true,
+      },
+    });
+    toolsWithNames = toolLookups.map(tool => ({
+      id: tool.id,
+      title: tool.name,
+      titleAr: tool.nameArabic,
+    }));
+  }
+
+  const ticketData = formatTicket(ticket);
+  ticketData.tools = toolsWithNames;
+
   res.status(200).json({
     success: true,
     message: 'Ticket retrieved successfully',
-    data: formatTicket(ticket),
+    data: ticketData,
   });
 });
 
 /**
  * Helper function to format ticket for response
  */
-function formatTicket(ticket: Ticket) {
+function formatTicket(ticket: Ticket): any {
   return {
     id: ticket.id,
     ticketCodeId: ticket.ticketCodeId,
@@ -297,7 +317,7 @@ function formatTicket(ticket: Ticket) {
       : null,
     havingFemaleEngineer: ticket.havingFemaleEngineer,
     withMaterial: ticket.withMaterial,
-    tools: ticket.tools,
+    tools: ticket.tools, // Will be replaced with toolsWithNames in getTicketById
     customerName: ticket.customerName,
     process: ticket.processLookup
       ? {
