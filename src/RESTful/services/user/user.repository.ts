@@ -27,7 +27,6 @@ class UserRepository {
     this.getUserById = this._getUserById.bind(this);
     this.getUserByToken = this._getUserByToken.bind(this);
     this.getUsers = this._getUsers.bind(this);
-    this.getStudents = this._getStudents.bind(this);
     this.updateUserById = this._updateUserById.bind(this);
     this.validateRefreshToken = this._validateRefreshToken.bind(this);
     this.updateUserToken = this._updateUserToken.bind(this);
@@ -85,14 +84,6 @@ class UserRepository {
     }
   }
 
-  private async _getStudents(where: FindOptions): Promise<UserOrm[]> {
-    try {
-      const students = await User.findAll(where);
-      return students as UserOrm[];
-    } catch (error) {
-      throw new Error(`Error fetching students: ${error.message}`);
-    }
-  }
 
   private async _getUserByToken(token: string): Promise<UserOrm | null> {
     try {
