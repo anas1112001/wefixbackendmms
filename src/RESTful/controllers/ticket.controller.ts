@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { Ticket } from '../../db/models/ticket.model';
 import { Lookup, LookupCategory } from '../../db/models/lookup.model';
+import { User } from '../../db/models/user.model';
 import { AppError, asyncHandler } from '../middleware/error.middleware';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Op } from 'sequelize';
@@ -57,6 +58,12 @@ export const getCompanyTickets = asyncHandler(async (req: AuthRequest, res: Resp
         model: Lookup,
         as: 'mainServiceLookup',
         required: false,
+      },
+      {
+        model: User,
+        as: 'assignToTechnicianUser',
+        required: false,
+        attributes: ['id', 'fullName', 'userNumber'],
       },
     ],
     order: [['createdAt', 'DESC']],
@@ -385,6 +392,13 @@ function formatTicket(ticket: Ticket): any {
     withMaterial: ticket.withMaterial,
     tools: ticket.tools, // Will be replaced with toolsWithNames in getTicketById
     customerName: ticket.customerName,
+    technician: ticket.assignToTechnicianUser
+      ? {
+          id: ticket.assignToTechnicianUser.id,
+          name: ticket.assignToTechnicianUser.fullName,
+          userNumber: ticket.assignToTechnicianUser.userNumber,
+        }
+      : null,
     process: ticket.processLookup
       ? {
           id: ticket.processLookup.id,
