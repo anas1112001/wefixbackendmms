@@ -303,8 +303,41 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
     throw new AppError('User not authenticated', 401, 'UNAUTHORIZED');
   }
 
-  // Clear token and tokenExpiresAt from database
-  await userRepository.clearUserToken(req.user.id.toString());
+  // Get the current token from the database
+  const user = await userRepository.getUserById(req.user.id.toString());
+  
+  if (!user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  // Get client type from request header
+  const clientType = req.headers['x-client-type'] as string; // 'mobile' or 'web'
+
+  // Logic:
+  // - Mobile can only clear tokens that start with "mobile-access-token:"
+  // - Frontend/web can only clear tokens that do NOT start with "mobile-access-token:"
+  if (user.token) {
+    const isMobileToken = user.token.startsWith('mobile-access-token:');
+    
+    let shouldClear = false;
+    
+    if (clientType === 'mobile') {
+      // Mobile client: only clear if token starts with "mobile-access-token:"
+      shouldClear = isMobileToken;
+    } else if (clientType === 'web') {
+      // Frontend/web client: only clear if token does NOT start with "mobile-access-token:"
+      shouldClear = !isMobileToken;
+    } else {
+      // No client type header provided - for backward compatibility, clear any token
+      // (this allows existing code to work, but it's better to specify client type)
+      shouldClear = true;
+    }
+    
+    if (shouldClear) {
+      // Clear token and tokenExpiresAt from database
+      await userRepository.clearUserToken(req.user.id.toString());
+    }
+  }
 
   res.status(200).json({
     success: true,

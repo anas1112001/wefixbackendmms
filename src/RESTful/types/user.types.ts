@@ -23,6 +23,8 @@ export interface UserOrm {
   updatedAt: Date;
   isActive: boolean;
   isDeleted: boolean;
+  token: string | null;
+  tokenExpiresAt: Date | null;
 }
 
 export interface CreateUserInput {
