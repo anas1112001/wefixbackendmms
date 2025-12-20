@@ -179,39 +179,52 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
                       referenceType === FileReferenceType.CONTRACT ? 'contract' : 
                       referenceType === FileReferenceType.USER ? 'user' : 'user');
 
-  // Helper function to parse nested form fields like fileMetadata[0][extension]
-  const getMetadataForFile = (index: number) => {
-    const metadata: any = {};
-    Object.keys(req.body).forEach(key => {
-      const match = key.match(new RegExp(`^fileMetadata\\[${index}\\]\\[(.+)\\]$`));
-      if (match) {
-        metadata[match[1]] = req.body[key];
-      }
-    });
-    return metadata;
-  };
+  // Debug: Log all request body keys to see the format
+  console.log('Request body keys:', Object.keys(req.body));
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     
-    // Get metadata from request if provided (sent by mobile app)
-    // Multer parses fileMetadata[0][extension] as separate keys, not nested objects
-    const metadata = getMetadataForFile(i);
+    // Extract metadata from flattened form fields
+    // Flutter sends: fileMetadata[0][extension], fileMetadata[0][sizeMB], etc.
+    const extension = req.body[`fileMetadata[${i}][extension]`];
+    const sizeMB = req.body[`fileMetadata[${i}][sizeMB]`];
+    const type = req.body[`fileMetadata[${i}][type]`];
+    const originalFilenameFromMeta = req.body[`fileMetadata[${i}][originalFilename]`];
+    const mimeTypeFromMeta = req.body[`fileMetadata[${i}][mimeType]`];
+    const sizeFromMeta = req.body[`fileMetadata[${i}][size]`];
+    const categoryFromMeta = req.body[`fileMetadata[${i}][category]`];
+    const storageProviderFromMeta = req.body[`fileMetadata[${i}][storageProvider]`];
+    const descriptionFromMeta = req.body[`fileMetadata[${i}][description]`];
     
-    // Debug logging
-    console.log(`File ${i} metadata:`, JSON.stringify(metadata));
-    console.log(`File ${i} originalname:`, file.originalname);
+    console.log(`File ${i} metadata from body:`, {
+      extension,
+      sizeMB,
+      type,
+      originalFilenameFromMeta,
+      mimeTypeFromMeta,
+      categoryFromMeta,
+    });
     
     // Use metadata from mobile app if available, otherwise calculate from file
-    const fileExtension = metadata.extension || path.extname(file.originalname).replace('.', '');
-    const fileType = metadata.type || getFileTypeFromExtension(fileExtension);
-    const fileSizeMB = metadata.sizeMB ? parseFloat(metadata.sizeMB) : parseFloat(((file.size || 0) / (1024 * 1024)).toFixed(2));
-    const originalFilename = metadata.originalFilename || file.originalname;
-    const mimeType = metadata.mimeType || file.mimetype;
-    const sizeBytes = metadata.size ? parseInt(metadata.size) : (file.size || 0);
-    const category = metadata.category || (fileType === 'image' ? 'image' : 'contract');
-    const storageProvider = metadata.storageProvider || 'LOCAL';
-    const description = metadata.description || null;
+    const fileExtension = extension || path.extname(file.originalname).replace('.', '');
+    const fileType = type || getFileTypeFromExtension(fileExtension);
+    const fileSizeMB = sizeMB ? parseFloat(sizeMB) : parseFloat(((file.size || 0) / (1024 * 1024)).toFixed(2));
+    const originalFilename = originalFilenameFromMeta || file.originalname;
+    const mimeType = mimeTypeFromMeta || file.mimetype;
+    const sizeBytes = sizeFromMeta ? parseInt(sizeFromMeta) : (file.size || 0);
+    const category = categoryFromMeta || (fileType === 'image' ? 'image' : 'contract');
+    const storageProvider = storageProviderFromMeta || 'LOCAL';
+    const description = descriptionFromMeta || null;
+    
+    console.log(`File ${i} final values:`, {
+      fileExtension,
+      fileType,
+      fileSizeMB,
+      storageProvider,
+      category,
+    });
 
     // Create file record with ALL required fields
     const fileRecord = await File.create({
