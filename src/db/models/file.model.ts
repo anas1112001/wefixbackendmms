@@ -90,7 +90,56 @@ export class File extends Model {
   })
   public id: number;
 
-  // All columns are legacy (original database schema)
+  // New required columns (added by migration)
+  @Column({
+    allowNull: false,
+    comment: 'File extension (jpg, png, pdf, docx, etc.)',
+    field: 'file_extension',
+    type: DataTypes.STRING(20),
+  })
+  public fileExtension: string;
+
+  @Column({
+    allowNull: false,
+    comment: 'File size in megabytes',
+    field: 'file_size_mb',
+    type: DataTypes.DECIMAL(10, 2),
+  })
+  public fileSizeMB: number;
+
+  @Column({
+    allowNull: false,
+    comment: 'File type category (image, pdf, doc, excel, video, etc.)',
+    field: 'file_type',
+    type: DataTypes.STRING(50),
+  })
+  public fileType: string;
+
+  @Column({
+    allowNull: false,
+    comment: 'Actual path OR URL in S3/Blob storage',
+    field: 'file_path',
+    type: DataTypes.STRING(500),
+  })
+  public filePath: string;
+
+  @Column({
+    allowNull: false,
+    defaultValue: 'LOCAL',
+    comment: 'Storage provider (LOCAL, AWS_S3, AZURE_BLOB, GOOGLE_CLOUD)',
+    field: 'storage_provider',
+    type: DataTypes.STRING(100),
+  })
+  public storageProvider: string;
+
+  @Column({
+    allowNull: true,
+    comment: 'Optional file description',
+    type: DataTypes.STRING(2000),
+  })
+  public description?: string | null;
+
+  // Legacy columns (original schema)
   @Column({
     allowNull: true,
     comment: 'Entity ID (ticket ID, company ID, etc.)',
