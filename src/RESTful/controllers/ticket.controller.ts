@@ -701,3 +701,269 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   });
 });
 
+
+/**
+ * Create a new ticket
+ * Only company admins and team leaders can create tickets
+ */
+export const createTicket = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+
+  if (!user) {
+    throw new AppError('User not authenticated', 401, 'UNAUTHORIZED');
+  }
+
+  // Check if user has permission (admin or team leader)
+  // Assuming admin role lookup name is 'Admin' and team leader is 'Team Leader'
+  // You may need to adjust these based on your actual lookup values
+  const userRole = await Lookup.findByPk(user.userRoleId);
+  if (!userRole) {
+    throw new AppError('User role not found', 404, 'NOT_FOUND');
+  }
+
+  const roleName = userRole.name.toLowerCase();
+  const isAdmin = roleName.includes('admin');
+  const isTeamLeader = roleName.includes('team') && roleName.includes('leader');
+
+  if (!isAdmin && !isTeamLeader) {
+    throw new AppError('Only company admins and team leaders can create tickets', 403, 'FORBIDDEN');
+  }
+
+  const companyId = user.companyId;
+  if (!companyId) {
+    throw new AppError('User is not associated with a company', 400, 'VALIDATION_ERROR');
+  }
+
+  const {
+    contractId,
+    branchId,
+    zoneId,
+    locationMap,
+    locationDescription,
+    ticketTypeId,
+    ticketDate,
+    ticketTimeFrom,
+    ticketTimeTo,
+    assignToTeamLeaderId,
+    assignToTechnicianId,
+    ticketDescription,
+    havingFemaleEngineer,
+    customerName,
+    withMaterial,
+    mainServiceId,
+    serviceDescription,
+    tools,
+  } = req.body;
+
+  // Validation
+  if (!contractId || !branchId || !zoneId || !locationDescription || !ticketTypeId || 
+      !ticketDate || !ticketTimeFrom || !ticketTimeTo || !assignToTeamLeaderId || 
+      !assignToTechnicianId || !mainServiceId) {
+    throw new AppError('Missing required fields', 400, 'VALIDATION_ERROR');
+  }
+
+  // Verify ticket type exists
+  const ticketType = await Lookup.findOne({
+    where: { id: ticketTypeId, category: LookupCategory.TICKET_TYPE, isActive: true },
+  });
+  if (!ticketType) {
+    throw new AppError('Invalid ticket type', 400, 'VALIDATION_ERROR');
+  }
+
+  // Get default status (usually "Pending")
+  const defaultStatus = await Lookup.findOne({
+    where: { category: LookupCategory.TICKET_STATUS, isDefault: true, isActive: true },
+  });
+  if (!defaultStatus) {
+    throw new AppError('Default ticket status not found', 500, 'INTERNAL_ERROR');
+  }
+
+  // Generate ticket code (format: COMPANY-TKT-001)
+  // This is a simple implementation - you may want to make this more sophisticated
+  const company = await Company.findByPk(companyId);
+  const companyShortCode = company?.shortCode || 'COMP';
+  const lastTicket = await Ticket.findOne({
+    where: { companyId },
+    order: [['createdAt', 'DESC']],
+  });
+  const ticketNumber = lastTicket ? parseInt(lastTicket.ticketCodeId.split('-').pop() || '0') + 1 : 1;
+  const ticketCodeId = `${companyShortCode}-TKT-${ticketNumber.toString().padStart(3, '0')}`;
+
+  // Create ticket
+  const ticket = await Ticket.create({
+    ticketCodeId,
+    companyId,
+    contractId,
+    branchId,
+    zoneId,
+    locationMap: locationMap || '',
+    locationDescription,
+    ticketTypeId,
+    ticketStatusId: defaultStatus.id,
+    ticketDate,
+    ticketTimeFrom,
+    ticketTimeTo,
+    assignToTeamLeaderId,
+    assignToTechnicianId,
+    ticketDescription: ticketDescription || null,
+    havingFemaleEngineer: havingFemaleEngineer || false,
+    customerName: customerName || null,
+    withMaterial: withMaterial || false,
+    mainServiceId,
+    serviceDescription: serviceDescription || null,
+    tools: tools || null,
+    createdBy: user.id,
+  });
+
+  // Fetch created ticket with relations
+  const createdTicket = await Ticket.findByPk(ticket.id, {
+    include: [
+      { model: Lookup, as: 'ticketTypeLookup', required: false },
+      { model: Lookup, as: 'ticketStatusLookup', required: false },
+      { model: Lookup, as: 'mainServiceLookup', required: false },
+      { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber'] },
+    ],
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Ticket created successfully',
+    data: formatTicket(createdTicket!),
+  });
+});
+
+/**
+ * Update an existing ticket
+ * Only company admins and team leaders can update tickets
+ */
+export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+  const ticketId = parseInt(req.params.id);
+
+  if (!user) {
+    throw new AppError('User not authenticated', 401, 'UNAUTHORIZED');
+  }
+
+  if (isNaN(ticketId)) {
+    throw new AppError('Invalid ticket ID', 400, 'VALIDATION_ERROR');
+  }
+
+  // Check if user has permission (admin or team leader)
+  const userRole = await Lookup.findByPk(user.userRoleId);
+  if (!userRole) {
+    throw new AppError('User role not found', 404, 'NOT_FOUND');
+  }
+
+  const roleName = userRole.name.toLowerCase();
+  const isAdmin = roleName.includes('admin');
+  const isTeamLeader = roleName.includes('team') && roleName.includes('leader');
+
+  if (!isAdmin && !isTeamLeader) {
+    throw new AppError('Only company admins and team leaders can update tickets', 403, 'FORBIDDEN');
+  }
+
+  const companyId = user.companyId;
+  if (!companyId) {
+    throw new AppError('User is not associated with a company', 400, 'VALIDATION_ERROR');
+  }
+
+  // Find ticket
+  const ticket = await Ticket.findOne({
+    where: {
+      id: ticketId,
+      companyId: companyId,
+      isDeleted: false,
+    },
+  });
+
+  if (!ticket) {
+    throw new AppError('Ticket not found or access denied', 404, 'NOT_FOUND');
+  }
+
+  // Update fields
+  const {
+    contractId,
+    branchId,
+    zoneId,
+    locationMap,
+    locationDescription,
+    ticketTypeId,
+    ticketStatusId,
+    ticketDate,
+    ticketTimeFrom,
+    ticketTimeTo,
+    assignToTeamLeaderId,
+    assignToTechnicianId,
+    ticketDescription,
+    havingFemaleEngineer,
+    customerName,
+    processId,
+    withMaterial,
+    mainServiceId,
+    serviceDescription,
+    tools,
+  } = req.body;
+
+  // Validate ticket type if provided
+  if (ticketTypeId) {
+    const ticketType = await Lookup.findOne({
+      where: { id: ticketTypeId, category: LookupCategory.TICKET_TYPE, isActive: true },
+    });
+    if (!ticketType) {
+      throw new AppError('Invalid ticket type', 400, 'VALIDATION_ERROR');
+    }
+    ticket.ticketTypeId = ticketTypeId;
+  }
+
+  // Validate ticket status if provided
+  if (ticketStatusId) {
+    const ticketStatus = await Lookup.findOne({
+      where: { id: ticketStatusId, category: LookupCategory.TICKET_STATUS, isActive: true },
+    });
+    if (!ticketStatus) {
+      throw new AppError('Invalid ticket status', 400, 'VALIDATION_ERROR');
+    }
+    ticket.ticketStatusId = ticketStatusId;
+  }
+
+  // Update other fields
+  if (contractId !== undefined) ticket.contractId = contractId;
+  if (branchId !== undefined) ticket.branchId = branchId;
+  if (zoneId !== undefined) ticket.zoneId = zoneId;
+  if (locationMap !== undefined) ticket.locationMap = locationMap;
+  if (locationDescription !== undefined) ticket.locationDescription = locationDescription;
+  if (ticketDate !== undefined) ticket.ticketDate = ticketDate;
+  if (ticketTimeFrom !== undefined) ticket.ticketTimeFrom = ticketTimeFrom;
+  if (ticketTimeTo !== undefined) ticket.ticketTimeTo = ticketTimeTo;
+  if (assignToTeamLeaderId !== undefined) ticket.assignToTeamLeaderId = assignToTeamLeaderId;
+  if (assignToTechnicianId !== undefined) ticket.assignToTechnicianId = assignToTechnicianId;
+  if (ticketDescription !== undefined) ticket.ticketDescription = ticketDescription;
+  if (havingFemaleEngineer !== undefined) ticket.havingFemaleEngineer = havingFemaleEngineer;
+  if (customerName !== undefined) ticket.customerName = customerName;
+  if (processId !== undefined) ticket.processId = processId;
+  if (withMaterial !== undefined) ticket.withMaterial = withMaterial;
+  if (mainServiceId !== undefined) ticket.mainServiceId = mainServiceId;
+  if (serviceDescription !== undefined) ticket.serviceDescription = serviceDescription;
+  if (tools !== undefined) ticket.tools = tools;
+  ticket.updatedBy = user.id;
+
+  await ticket.save();
+
+  // Fetch updated ticket with relations
+  const updatedTicket = await Ticket.findByPk(ticket.id, {
+    include: [
+      { model: Lookup, as: 'ticketTypeLookup', required: false },
+      { model: Lookup, as: 'ticketStatusLookup', required: false },
+      { model: Lookup, as: 'mainServiceLookup', required: false },
+      { model: Lookup, as: 'processLookup', required: false },
+      { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber'] },
+    ],
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Ticket updated successfully',
+    data: formatTicket(updatedTicket!),
+  });
+});
+
