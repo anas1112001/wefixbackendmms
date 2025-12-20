@@ -141,7 +141,19 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
     throw new AppError('No files uploaded', 400, 'VALIDATION_ERROR');
   }
 
-  const files = Array.isArray(req.files) ? req.files : [req.files];
+  // Handle different multer file types
+  let files: Express.Multer.File[] = [];
+  if (Array.isArray(req.files)) {
+    files = req.files;
+  } else if (req.files) {
+    // If it's an object with fieldnames, flatten all files into a single array
+    files = Object.values(req.files).flat();
+  }
+
+  if (files.length === 0) {
+    throw new AppError('No files uploaded', 400, 'VALIDATION_ERROR');
+  }
+
   const referenceId = req.body.referenceId ? parseInt(req.body.referenceId) : null;
   const referenceType = req.body.referenceType || FileReferenceType.TICKET_ATTACHMENT;
 
@@ -150,7 +162,7 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
   for (const file of files) {
     const fileExtension = path.extname(file.originalname);
     const fileType = getFileTypeFromExtension(fileExtension);
-    const fileSizeMB = parseFloat((file.size / (1024 * 1024)).toFixed(2));
+    const fileSizeMB = parseFloat(((file.size || 0) / (1024 * 1024)).toFixed(2));
 
     const fileRecord = await File.create({
       referenceId,
