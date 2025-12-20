@@ -478,6 +478,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     mainServiceId,
     serviceDescription,
     tools,
+    fileIds, // Array of file IDs to link to this ticket
   } = req.body;
 
   // Validation
@@ -622,6 +623,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
   // Update fields
   const {
+    fileIds, // Array of file IDs to link to this ticket
     contractId,
     branchId,
     zoneId,
