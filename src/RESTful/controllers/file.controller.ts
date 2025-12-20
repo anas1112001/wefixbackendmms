@@ -91,8 +91,11 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
   const fileType = getFileTypeFromExtension(fileExtension);
   const fileSizeMB = parseFloat((file.size / (1024 * 1024)).toFixed(2));
 
-  // Get referenceId and referenceType from request body (optional - will be linked later)
+  // Get referenceId (ticketId) from request body - required for entity_id
   const referenceId = req.body.referenceId ? parseInt(req.body.referenceId) : null;
+  if (!referenceId) {
+    throw new AppError('referenceId (ticketId) is required for file upload', 400, 'VALIDATION_ERROR');
+  }
   const referenceType = req.body.referenceType || FileReferenceType.TICKET_ATTACHMENT;
 
   // Create file record in database using only legacy columns
@@ -105,7 +108,7 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
     category: fileType === FileType.IMAGE ? 'image' : 'contract', // Legacy enum
     entityType: referenceType === FileReferenceType.COMPANY ? 'company' : 
                 referenceType === FileReferenceType.CONTRACT ? 'contract' : 'user', // Legacy enum
-    entityId: referenceId || null, // Entity ID (ticket ID, company ID, etc.) - nullable until linked
+    entityId: referenceId, // Entity ID (ticket ID) - required
     createdBy: user.id, // User who uploaded
   } as any) as any;
 
@@ -174,7 +177,7 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
       entityType: referenceType === FileReferenceType.COMPANY ? 'company' : 
                   referenceType === FileReferenceType.CONTRACT ? 'contract' : 
                   referenceType === FileReferenceType.USER ? 'user' : 'user', // Legacy enum - using 'user' as fallback for TICKET_ATTACHMENT and others
-      entityId: referenceId || null, // Entity ID (ticket ID, company ID, etc.) - nullable until linked
+      entityId: referenceId, // Entity ID (ticket ID) - required
       createdBy: user.id, // User who uploaded
     } as any) as any;
 
@@ -273,4 +276,5 @@ export const deleteFile = asyncHandler(async (req: AuthRequest, res: Response) =
     message: 'File deleted successfully',
   });
 });
+
 
