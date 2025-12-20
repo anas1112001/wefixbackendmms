@@ -85,10 +85,10 @@ export class File extends Model {
   @Column({
     allowNull: false,
     primaryKey: true,
-    autoIncrement: true,
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
   })
-  public id: number;
+  public id: string;
 
   // New required columns (added by migration)
   @Column({
