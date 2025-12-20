@@ -448,19 +448,9 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
   }
 
   // Check if user has permission (admin or team leader)
-  // Assuming admin role lookup name is 'Admin' and team leader is 'Team Leader'
-  // You may need to adjust these based on your actual lookup values
-  const userRole = await Lookup.findByPk(user.userRoleId);
-  if (!userRole) {
-    throw new AppError('User role not found', 404, 'NOT_FOUND');
-  }
-
-  const roleName = userRole.name.toLowerCase();
-  const isAdmin = roleName.includes('admin');
-  const isTeamLeader = roleName.includes('team') && roleName.includes('leader');
-
-  if (!isAdmin && !isTeamLeader) {
-    throw new AppError('Only company admins and team leaders can create tickets', 403, 'FORBIDDEN');
+  // Role IDs: 18 = Admin, 19 = Team Leader
+  if (user.userRoleId !== 18 && user.userRoleId !== 19) {
+    throw new AppError('Forbidden: Only Admins and Team Leaders can create tickets', 403, 'FORBIDDEN');
   }
 
   const companyId = user.companyId;
