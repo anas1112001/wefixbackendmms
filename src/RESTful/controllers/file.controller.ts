@@ -234,13 +234,15 @@ export const getFilesByReference = asyncHandler(async (req: AuthRequest, res: Re
     throw new AppError('referenceId and referenceType are required', 400, 'VALIDATION_ERROR');
   }
 
+  // Use legacy columns for querying
   const files = await File.findAll({
     where: {
-      referenceId,
-      referenceType,
-      isDeleted: false,
+      entityId: referenceId,
+      entityType: referenceType === FileReferenceType.TICKET_ATTACHMENT ? 'user' : 
+                  referenceType === FileReferenceType.COMPANY ? 'company' : 
+                  referenceType === FileReferenceType.CONTRACT ? 'contract' : 'user',
     },
-    order: [['uploadedAt', 'DESC']],
+    order: [['createdAt', 'DESC']],
   });
 
   res.status(200).json({
@@ -276,16 +278,12 @@ export const deleteFile = asyncHandler(async (req: AuthRequest, res: Response) =
   }
 
   const file = await File.findByPk(fileId);
-  if (!file || file.isDeleted) {
+  if (!file) {
     throw new AppError('File not found', 404, 'NOT_FOUND');
   }
 
-  // Soft delete
-  await file.update({
-    isDeleted: true,
-    deletedAt: new Date(),
-    deletedBy: user.id,
-  });
+  // Hard delete (soft delete columns were removed)
+  await file.destroy();
 
   res.status(200).json({
     success: true,
