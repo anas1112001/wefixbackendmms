@@ -179,11 +179,28 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
                       referenceType === FileReferenceType.CONTRACT ? 'contract' : 
                       referenceType === FileReferenceType.USER ? 'user' : 'user');
 
+  // Helper function to parse nested form fields like fileMetadata[0][extension]
+  const getMetadataForFile = (index: number) => {
+    const metadata: any = {};
+    Object.keys(req.body).forEach(key => {
+      const match = key.match(new RegExp(`^fileMetadata\\[${index}\\]\\[(.+)\\]$`));
+      if (match) {
+        metadata[match[1]] = req.body[key];
+      }
+    });
+    return metadata;
+  };
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     
     // Get metadata from request if provided (sent by mobile app)
-    const metadata = req.body.fileMetadata?.[i] || {};
+    // Multer parses fileMetadata[0][extension] as separate keys, not nested objects
+    const metadata = getMetadataForFile(i);
+    
+    // Debug logging
+    console.log(`File ${i} metadata:`, JSON.stringify(metadata));
+    console.log(`File ${i} originalname:`, file.originalname);
     
     // Use metadata from mobile app if available, otherwise calculate from file
     const fileExtension = metadata.extension || path.extname(file.originalname).replace('.', '');
