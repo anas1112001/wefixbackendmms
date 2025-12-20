@@ -79,6 +79,7 @@ export const convertFileEntityTypeToReferenceType = (entityType: FileEntityType)
   modelName: 'File',
   tableName: 'files',
   underscored: true,
+  timestamps: false, // We manage timestamps manually with createdAt/updatedAt
 })
 export class File extends Model {
   @Column({
@@ -89,20 +90,61 @@ export class File extends Model {
   })
   public id: string;
 
-  // Only legacy columns remain after migration
+  // New required columns added by migration
+  @Column({
+    allowNull: false,
+    comment: 'File extension (jpg, png, pdf, docx, etc.)',
+    type: DataTypes.STRING(20),
+  })
+  public fileExtension: string;
 
-  // Legacy fields for backward compatibility (deprecated - use new fields instead)
-  // These will be removed in a future migration after all code is updated
+  @Column({
+    allowNull: false,
+    comment: 'File size in megabytes',
+    type: DataTypes.DECIMAL(10, 2),
+  })
+  public fileSizeMB: number;
+
+  @Column({
+    allowNull: false,
+    comment: 'File type category (image, pdf, doc, excel, video, etc.)',
+    type: DataTypes.STRING(50),
+  })
+  public fileType: string;
+
+  @Column({
+    allowNull: false,
+    comment: 'Actual path OR URL in S3/Blob storage',
+    type: DataTypes.STRING(500),
+  })
+  public filePath: string;
+
+  @Column({
+    allowNull: false,
+    defaultValue: 'LOCAL',
+    comment: 'Storage provider (LOCAL, AWS_S3, AZURE_BLOB, GOOGLE_CLOUD)',
+    type: DataTypes.STRING(100),
+  })
+  public storageProvider: string;
+
   @Column({
     allowNull: true,
-    comment: 'DEPRECATED: Use referenceId instead',
+    comment: 'Optional file description',
+    type: DataTypes.STRING(2000),
+  })
+  public description?: string | null;
+
+  // Legacy columns (still in use)
+  @Column({
+    allowNull: true,
+    comment: 'Entity ID (ticket ID, company ID, etc.)',
     type: DataTypes.INTEGER,
   })
   public entityId?: number | null;
 
   @Column({
     allowNull: true,
-    comment: 'DEPRECATED: Use referenceType instead',
+    comment: 'Entity type (company, contract, user)',
     type: DataTypes.ENUM({ values: Object.values(FileEntityType) }),
   })
   public entityType?: FileEntityType | null;
