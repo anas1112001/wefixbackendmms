@@ -3,6 +3,7 @@ import { Ticket } from '../../db/models/ticket.model';
 import { Lookup, LookupCategory } from '../../db/models/lookup.model';
 import { User } from '../../db/models/user.model';
 import { Company } from '../../db/models/company.model';
+import { File, FileReferenceType } from '../../db/models/file.model';
 import { AppError, asyncHandler } from '../middleware/error.middleware';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Op } from 'sequelize';
@@ -477,6 +478,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     mainServiceId,
     serviceDescription,
     tools,
+    fileIds, // Array of file IDs to link to this ticket
   } = req.body;
 
   // Validation
@@ -538,6 +540,34 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     tools: tools || null,
     createdBy: user.id,
   });
+
+  // Link files to ticket if fileIds are provided
+  if (fileIds && Array.isArray(fileIds) && fileIds.length > 0) {
+    // Validate that all file IDs exist and are not already linked
+    const files = await File.findAll({
+      where: {
+        id: { [Op.in]: fileIds },
+        isDeleted: false,
+      },
+    });
+
+    if (files.length !== fileIds.length) {
+      throw new AppError('One or more file IDs are invalid', 400, 'VALIDATION_ERROR');
+    }
+
+    // Update files to link them to this ticket
+    await File.update(
+      {
+        referenceId: ticket.id,
+        referenceType: FileReferenceType.TICKET_ATTACHMENT,
+      },
+      {
+        where: {
+          id: { [Op.in]: fileIds },
+        },
+      }
+    );
+  }
 
   // Fetch created ticket with relations
   const createdTicket = await Ticket.findByPk(ticket.id, {
@@ -606,6 +636,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
   // Update fields
   const {
+    fileIds, // Array of file IDs to link to this ticket
     contractId,
     branchId,
     zoneId,
@@ -672,6 +703,34 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   ticket.updatedBy = user.id;
 
   await ticket.save();
+
+  // Link files to ticket if fileIds are provided
+  if (fileIds !== undefined && Array.isArray(fileIds) && fileIds.length > 0) {
+    // Validate that all file IDs exist
+    const files = await File.findAll({
+      where: {
+        id: { [Op.in]: fileIds },
+        isDeleted: false,
+      },
+    });
+
+    if (files.length !== fileIds.length) {
+      throw new AppError('One or more file IDs are invalid', 400, 'VALIDATION_ERROR');
+    }
+
+    // Update files to link them to this ticket
+    await File.update(
+      {
+        referenceId: ticket.id,
+        referenceType: FileReferenceType.TICKET_ATTACHMENT,
+      },
+      {
+        where: {
+          id: { [Op.in]: fileIds },
+        },
+      }
+    );
+  }
 
   // Fetch updated ticket with relations
   const updatedTicket = await Ticket.findByPk(ticket.id, {
