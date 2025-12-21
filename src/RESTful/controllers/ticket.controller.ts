@@ -337,6 +337,48 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
         as: 'mainServiceLookup',
         required: false,
       },
+      {
+        model: User,
+        as: 'assignToTeamLeaderUser',
+        required: false,
+        attributes: ['id', 'fullName', 'userNumber'],
+      },
+      {
+        model: User,
+        as: 'assignToTechnicianUser',
+        required: false,
+        attributes: ['id', 'fullName', 'userNumber'],
+      },
+      {
+        model: Contract,
+        as: 'contract',
+        required: false,
+        attributes: ['id', 'title'],
+      },
+      {
+        model: Branch,
+        as: 'branch',
+        required: false,
+        attributes: ['id', 'title'],
+      },
+      {
+        model: Zone,
+        as: 'zone',
+        required: false,
+        attributes: ['id', 'title'],
+      },
+      {
+        model: User,
+        as: 'creator',
+        required: false,
+        attributes: ['id', 'fullName', 'userNumber'],
+      },
+      {
+        model: User,
+        as: 'updater',
+        required: false,
+        attributes: ['id', 'fullName', 'userNumber'],
+      },
     ],
   });
 
@@ -361,8 +403,27 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
     }));
   }
 
+  // Fetch files attached to this ticket
+  // Files are linked to tickets using entityId (ticket ID)
+  const ticketFiles = await File.findAll({
+    where: {
+      entityId: ticketId,
+      isDeleted: false,
+    },
+    attributes: ['id', 'filename', 'originalFilename', 'path', 'filePath', 'size', 'fileSizeMB', 'category', 'createdAt'],
+    order: [['createdAt', 'DESC']],
+  });
+
   const ticketData = formatTicket(ticket);
   ticketData.tools = toolsWithNames;
+  ticketData.files = ticketFiles.map(file => ({
+    id: file.id,
+    fileName: file.originalFilename ?? file.filename ?? '',
+    filePath: file.filePath ?? file.path ?? '',
+    fileSize: file.size ?? 0,
+    category: file.category ?? 'other',
+    createdAt: file.createdAt,
+  }));
 
   res.status(200).json({
     success: true,
@@ -380,8 +441,30 @@ function formatTicket(ticket: Ticket): any {
     ticketCodeId: ticket.ticketCodeId,
     companyId: ticket.companyId,
     contractId: ticket.contractId,
+    contract: ticket.contract
+      ? {
+          id: ticket.contract.id,
+          title: ticket.contract.contractTitle,
+          reference: ticket.contract.contractReference,
+        }
+      : null,
     branchId: ticket.branchId,
+    branch: ticket.branch
+      ? {
+          id: ticket.branch.id,
+          title: ticket.branch.branchTitle,
+          nameArabic: ticket.branch.branchNameArabic,
+          nameEnglish: ticket.branch.branchNameEnglish,
+        }
+      : null,
     zoneId: ticket.zoneId,
+    zone: ticket.zone
+      ? {
+          id: ticket.zone.id,
+          title: ticket.zone.zoneTitle,
+          number: ticket.zone.zoneNumber,
+        }
+      : null,
     locationMap: ticket.locationMap,
     locationDescription: ticket.locationDescription,
     ticketType: ticket.ticketTypeLookup
@@ -414,11 +497,35 @@ function formatTicket(ticket: Ticket): any {
     withMaterial: ticket.withMaterial,
     tools: ticket.tools, // Will be replaced with toolsWithNames in getTicketById
     customerName: ticket.customerName,
+    teamLeader: ticket.assignToTeamLeaderUser
+      ? {
+          id: ticket.assignToTeamLeaderUser.id,
+          name: ticket.assignToTeamLeaderUser.fullName,
+          userNumber: ticket.assignToTeamLeaderUser.userNumber,
+        }
+      : null,
     technician: ticket.assignToTechnicianUser
       ? {
           id: ticket.assignToTechnicianUser.id,
           name: ticket.assignToTechnicianUser.fullName,
           userNumber: ticket.assignToTechnicianUser.userNumber,
+        }
+      : null,
+    source: ticket.source,
+    createdBy: ticket.createdBy,
+    creator: ticket.creator
+      ? {
+          id: ticket.creator.id,
+          name: ticket.creator.fullName,
+          userNumber: ticket.creator.userNumber,
+        }
+      : null,
+    updatedBy: ticket.updatedBy,
+    updater: ticket.updater
+      ? {
+          id: ticket.updater.id,
+          name: ticket.updater.fullName,
+          userNumber: ticket.updater.userNumber,
         }
       : null,
     createdAt: ticket.createdAt,
