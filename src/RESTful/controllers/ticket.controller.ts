@@ -418,14 +418,28 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
 
   const ticketData = formatTicket(ticket);
   ticketData.tools = toolsWithNames;
-  ticketData.files = ticketFiles.map(file => ({
-    id: file.id,
-    fileName: file.originalFilename ?? file.filename ?? '',
-    filePath: file.filePath ?? file.path ?? '',
-    fileSize: file.size ?? 0,
-    category: file.category ?? 'other',
-    createdAt: file.createdAt,
-  }));
+  ticketData.files = ticketFiles.map(file => {
+    // Convert server file path to accessible URL
+    // Server path: /app/uploads/filename.ext or /path/to/app/uploads/filename.ext
+    // URL path: /uploads/filename.ext
+    let filePath = file.filePath ?? file.path ?? '';
+    
+    // Extract filename from path
+    const filename = filePath.split('/').pop() || file.filename || '';
+    
+    // Build accessible URL: /uploads/filename
+    // This will be served by express.static('/uploads') route
+    const fileUrl = filename ? `/uploads/${filename}` : '';
+    
+    return {
+      id: file.id,
+      fileName: file.originalFilename ?? file.filename ?? '',
+      filePath: fileUrl, // Use URL path instead of server path
+      fileSize: file.size ?? 0,
+      category: file.category ?? 'other',
+      createdAt: file.createdAt,
+    };
+  });
 
   res.status(200).json({
     success: true,

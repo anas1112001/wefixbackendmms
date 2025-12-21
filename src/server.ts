@@ -53,6 +53,9 @@ export class Server {
     // Serve static files
     this.app.use(express.static(path.join(__dirname, '..', 'public')));
     
+    // Serve uploaded files from uploads directory
+    this.app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+    
     // Request logging in development
     if (process.env.NODE_ENV !== 'production') {
       this.app.use((req, res, next) => {
