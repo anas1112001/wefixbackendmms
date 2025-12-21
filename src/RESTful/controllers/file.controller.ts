@@ -152,6 +152,13 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
     // Note: referenceType column doesn't exist in database, so we don't save it
   } as any) as any;
 
+  // Convert server file path to accessible URL
+  // Server path: /app/uploads/filename.ext or /path/to/app/uploads/filename.ext
+  // URL path: /uploads/filename.ext
+  const serverFilePath = (fileRecord as any).filePath || file.path;
+  const filename = serverFilePath.split('/').pop() || file.filename || '';
+  const fileUrl = filename ? `/uploads/${filename}` : '';
+
   res.status(201).json({
     success: true,
     message: 'File uploaded successfully',
@@ -161,7 +168,7 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
       fileExtension: (fileRecord as any).fileExtension,
       fileType: (fileRecord as any).fileType,
       fileSizeMB: (fileRecord as any).fileSizeMB,
-      filePath: (fileRecord as any).filePath,
+      filePath: fileUrl, // Use URL path instead of server path
       referenceId: (fileRecord as any).entityId,
       referenceType: referenceType,
       uploadedAt: (fileRecord as any).createdAt,
@@ -274,13 +281,20 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
       // We use entityType 'ticket' to identify ticket attachments
     } as any) as any;
 
+    // Convert server file path to accessible URL
+    // Server path: /app/uploads/filename.ext or /path/to/app/uploads/filename.ext
+    // URL path: /uploads/filename.ext
+    const serverFilePath = (fileRecord as any).filePath || file.path;
+    const filename = serverFilePath.split('/').pop() || file.filename || '';
+    const fileUrl = filename ? `/uploads/${filename}` : '';
+
     uploadedFiles.push({
       id: (fileRecord as any).id,
       fileName: (fileRecord as any).filename,
       fileExtension: (fileRecord as any).fileExtension,
       fileType: (fileRecord as any).fileType,
       fileSizeMB: (fileRecord as any).fileSizeMB,
-      filePath: (fileRecord as any).filePath,
+      filePath: fileUrl, // Use URL path instead of server path
       referenceId: (fileRecord as any).entityId,
       referenceType: referenceType,
       uploadedAt: (fileRecord as any).createdAt,
