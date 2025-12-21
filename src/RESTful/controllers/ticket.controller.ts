@@ -619,7 +619,9 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
 /**
  * Update an existing ticket
- * Only company admins and team leaders can update tickets
+ * Only Company Admin (18) and Team Leader (20) can update tickets
+ * Rejects unauthorized updates
+ * Tracks updatedBy & updatedAt automatically
  */
 export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = req.user;
@@ -634,17 +636,13 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   }
 
   // Check if user has permission (admin or team leader)
-  const userRole = await Lookup.findByPk(user.userRoleId);
-  if (!userRole) {
-    throw new AppError('User role not found', 404, 'NOT_FOUND');
-  }
-
-  const roleName = userRole.name.toLowerCase();
-  const isAdmin = roleName.includes('admin');
-  const isTeamLeader = roleName.includes('team') && roleName.includes('leader');
-
-  if (!isAdmin && !isTeamLeader) {
-    throw new AppError('Only company admins and team leaders can update tickets', 403, 'FORBIDDEN');
+  // Role IDs: 18 = Admin, 20 = Team Leader
+  if (user.userRoleId !== 18 && user.userRoleId !== 20) {
+    throw new AppError(
+      'Forbidden: Only Company Admins and Team Leaders can update tickets',
+      403,
+      'FORBIDDEN'
+    );
   }
 
   const companyId = user.companyId;
@@ -652,7 +650,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('User is not associated with a company', 400, 'VALIDATION_ERROR');
   }
 
-  // Find ticket
+  // Find ticket and verify it belongs to user's company
   const ticket = await Ticket.findOne({
     where: {
       id: ticketId,
@@ -662,7 +660,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   });
 
   if (!ticket) {
-    throw new AppError('Ticket not found or access denied', 404, 'NOT_FOUND');
+    throw new AppError('Ticket not found or access denied. You can only update tickets from your company.', 404, 'NOT_FOUND');
   }
 
   // Update fields
@@ -711,6 +709,67 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     ticket.ticketStatusId = ticketStatusId;
   }
 
+  // Role-based validation: Team Leaders can only update tickets assigned to themselves
+  // They cannot reassign tickets to another Team Leader
+  if (user.userRoleId === 20 && assignToTeamLeaderId !== undefined && assignToTeamLeaderId !== user.id) {
+    throw new AppError(
+      'Team Leaders can only update tickets assigned to themselves. You cannot reassign tickets to another Team Leader.',
+      403,
+      'FORBIDDEN'
+    );
+  }
+
+  // Validate hierarchy if fields are being updated
+  if (contractId !== undefined) {
+    const contract = await Contract.findByPk(contractId);
+    if (!contract || contract.companyId !== companyId) {
+      throw new AppError('Invalid contract or contract does not belong to your company', 400, 'VALIDATION_ERROR');
+    }
+  }
+
+  if (branchId !== undefined) {
+    const branch = await Branch.findByPk(branchId);
+    if (!branch || branch.companyId !== companyId) {
+      throw new AppError('Invalid branch or branch does not belong to your company', 400, 'VALIDATION_ERROR');
+    }
+  }
+
+  if (zoneId !== undefined) {
+    const zone = await Zone.findByPk(zoneId);
+    const finalBranchId = branchId !== undefined ? branchId : ticket.branchId;
+    if (!zone || zone.branchId !== finalBranchId) {
+      throw new AppError('Invalid zone or zone does not belong to the selected branch', 400, 'VALIDATION_ERROR');
+    }
+  }
+
+  // Validate Team Leader if being updated
+  if (assignToTeamLeaderId !== undefined) {
+    const teamLeader = await User.findOne({
+      where: { id: assignToTeamLeaderId, companyId, isDeleted: false },
+      include: [{ model: Lookup, as: 'userRoleLookup', required: false }],
+    });
+    if (!teamLeader) {
+      throw new AppError('Team Leader not found or does not belong to your company', 400, 'VALIDATION_ERROR');
+    }
+    if (teamLeader.userRoleId !== 20) {
+      throw new AppError('Assigned user is not a Team Leader', 400, 'VALIDATION_ERROR');
+    }
+  }
+
+  // Validate Technician if being updated
+  if (assignToTechnicianId !== undefined) {
+    const technician = await User.findOne({
+      where: { id: assignToTechnicianId, companyId, isDeleted: false },
+      include: [{ model: Lookup, as: 'userRoleLookup', required: false }],
+    });
+    if (!technician) {
+      throw new AppError('Technician not found or does not belong to your company', 400, 'VALIDATION_ERROR');
+    }
+    if (technician.userRoleId === 18 || technician.userRoleId === 20) {
+      throw new AppError('Assigned user cannot be an Admin or Team Leader', 400, 'VALIDATION_ERROR');
+    }
+  }
+
   // Update other fields
   if (contractId !== undefined) ticket.contractId = contractId;
   if (branchId !== undefined) ticket.branchId = branchId;
@@ -729,6 +788,9 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   if (mainServiceId !== undefined) ticket.mainServiceId = mainServiceId;
   if (serviceDescription !== undefined) ticket.serviceDescription = serviceDescription;
   if (tools !== undefined) ticket.tools = tools;
+  
+  // Track who updated the ticket and when
+  // updatedAt is automatically set by Sequelize @UpdatedAt decorator
   ticket.updatedBy = user.id;
 
   await ticket.save();
