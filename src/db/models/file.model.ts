@@ -19,6 +19,7 @@ export enum FileEntityType {
   COMPANY = 'company',
   CONTRACT = 'contract',
   USER = 'user',
+  TICKET = 'ticket', // For ticket attachments
 }
 
 // ReferenceType enum values as per specification
@@ -161,6 +162,15 @@ export class File extends Model {
     type: DataTypes.DATE,
   })
   public uploadedAt: Date;
+
+  // Reference type (new schema)
+  @Column({
+    allowNull: true,
+    comment: 'Reference type (TICKET_ATTACHMENT, COMPANY, USER, etc.)',
+    field: 'reference_type',
+    type: DataTypes.ENUM({ values: Object.values(FileReferenceType) }),
+  })
+  public referenceType?: FileReferenceType | null;
 
   // Legacy columns (original schema)
   @Column({
