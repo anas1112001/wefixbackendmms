@@ -53,9 +53,6 @@ export class Server {
     // Serve static files
     this.app.use(express.static(path.join(__dirname, '..', 'public')));
     
-    // Serve uploaded files from uploads directory
-    this.app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-    
     // Request logging in development
     if (process.env.NODE_ENV !== 'production') {
       this.app.use((req, res, next) => {
@@ -106,6 +103,38 @@ export class Server {
     // API routes
     this.app.use('/api/v1', apiRoutes);
     
+    // Serve uploaded files from uploads directory (must be before 404 handler)
+    // This allows direct access to uploaded files via /uploads/filename.ext
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      console.log(`📁 Created uploads directory: ${uploadsDir}`);
+    }
+    
+    // Serve static files from uploads directory
+    this.app.use('/uploads', express.static(uploadsDir, {
+      // Set proper headers for file downloads
+      setHeaders: (res, filePath) => {
+        // Set content type based on file extension
+        if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
+          res.setHeader('Content-Type', 'audio/mpeg');
+        } else if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
+          res.setHeader('Content-Type', 'video/mp4');
+        } else if (filePath.endsWith('.pdf')) {
+          res.setHeader('Content-Type', 'application/pdf');
+        } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+          res.setHeader('Content-Type', 'image/jpeg');
+        } else if (filePath.endsWith('.png')) {
+          res.setHeader('Content-Type', 'image/png');
+        }
+        // Allow CORS for file access
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      },
+    }));
+    console.log(`📁 Serving uploads from: ${uploadsDir}`);
+    
     // Root endpoint
     this.app.get('/', (req, res) => {
       res.json({
@@ -121,7 +150,7 @@ export class Server {
       });
     });
     
-    // 404 handler
+    // 404 handler (must be last, after all routes including static files)
     this.app.use((req, res) => {
       res.status(404).json({
         success: false,
