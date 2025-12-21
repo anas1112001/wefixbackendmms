@@ -165,31 +165,6 @@ export class Ticket extends Model {
   })
   public customerName: string | null;
 
-  @ForeignKey(() => Lookup)
-  @Column({
-    allowNull: true,
-    type: DataTypes.INTEGER,
-    comment: 'Process lookup ID (e.g., Ready to Visit)',
-  })
-  public processId: number | null;
-
-  @BelongsTo(() => Lookup, { foreignKey: 'processId', as: 'processLookup' })
-  public processLookup: Lookup | null;
-
-  @Column({
-    allowNull: true,
-    type: DataTypes.TIME,
-    comment: 'Start time for the ticket',
-  })
-  public startTime: string | null;
-
-  @Column({
-    allowNull: true,
-    type: DataTypes.TIME,
-    comment: 'End time for the ticket',
-  })
-  public endTime: string | null;
-
   @Column({
     allowNull: false,
     defaultValue: false,

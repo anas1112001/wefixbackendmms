@@ -334,11 +334,6 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
         as: 'mainServiceLookup',
         required: false,
       },
-      {
-        model: Lookup,
-        as: 'processLookup',
-        required: false,
-      },
     ],
   });
 
@@ -423,15 +418,6 @@ function formatTicket(ticket: Ticket): any {
           userNumber: ticket.assignToTechnicianUser.userNumber,
         }
       : null,
-    process: ticket.processLookup
-      ? {
-          id: ticket.processLookup.id,
-          name: ticket.processLookup.name,
-          nameArabic: ticket.processLookup.nameArabic,
-        }
-      : null,
-    startTime: ticket.startTime,
-    endTime: ticket.endTime,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
   };
@@ -639,7 +625,6 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     ticketDescription,
     havingFemaleEngineer,
     customerName,
-    processId,
     withMaterial,
     mainServiceId,
     serviceDescription,
@@ -682,7 +667,6 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   if (ticketDescription !== undefined) ticket.ticketDescription = ticketDescription;
   if (havingFemaleEngineer !== undefined) ticket.havingFemaleEngineer = havingFemaleEngineer;
   if (customerName !== undefined) ticket.customerName = customerName;
-  if (processId !== undefined) ticket.processId = processId;
   if (withMaterial !== undefined) ticket.withMaterial = withMaterial;
   if (mainServiceId !== undefined) ticket.mainServiceId = mainServiceId;
   if (serviceDescription !== undefined) ticket.serviceDescription = serviceDescription;
@@ -712,7 +696,6 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
       { model: Lookup, as: 'ticketTypeLookup', required: false },
       { model: Lookup, as: 'ticketStatusLookup', required: false },
       { model: Lookup, as: 'mainServiceLookup', required: false },
-      { model: Lookup, as: 'processLookup', required: false },
       { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber'] },
     ],
   });
