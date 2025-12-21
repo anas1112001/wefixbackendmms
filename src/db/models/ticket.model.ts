@@ -268,5 +268,13 @@ export class Ticket extends Model {
     type: DataTypes.BOOLEAN,
   })
   public isDeleted: boolean;
+
+  @Column({
+    allowNull: false,
+    defaultValue: 'Web',
+    type: DataTypes.STRING(20),
+    comment: 'Source of ticket creation: Web (frontend-oms) or Mobile (mobile-mms)',
+  })
+  public source: string;
 }
 

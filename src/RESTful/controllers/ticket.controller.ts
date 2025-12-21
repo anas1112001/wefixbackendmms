@@ -524,6 +524,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     mainServiceId,
     serviceDescription: serviceDescription || null,
     tools: tools || null,
+    source: 'Mobile', // Set source to Mobile for tickets created from mobile app (backend-mms)
     createdBy: user.id,
   });
 
