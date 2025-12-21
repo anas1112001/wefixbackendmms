@@ -353,19 +353,19 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
         model: Contract,
         as: 'contract',
         required: false,
-        attributes: ['id', 'title'],
+        attributes: ['id', 'contractTitle', 'contractReference'],
       },
       {
         model: Branch,
         as: 'branch',
         required: false,
-        attributes: ['id', 'title'],
+        attributes: ['id', 'branchTitle', 'branchNameArabic', 'branchNameEnglish'],
       },
       {
         model: Zone,
         as: 'zone',
         required: false,
-        attributes: ['id', 'title'],
+        attributes: ['id', 'zoneTitle', 'zoneNumber', 'zoneDescription'],
       },
       {
         model: User,
