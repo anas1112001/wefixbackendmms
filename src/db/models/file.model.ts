@@ -8,7 +8,11 @@ import { getDate, getIsoTimestamp, setDate } from '../../lib';
 // Legacy enums for backward compatibility
 export enum FileCategory {
   IMAGE = 'image',
-  CONTRACT = 'contract',
+  CONTRACT = 'contract', // Deprecated, kept for backward compatibility
+  DOCUMENT = 'document',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  OTHER = 'other',
 }
 
 export enum FileEntityType {

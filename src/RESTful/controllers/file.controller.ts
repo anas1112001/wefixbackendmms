@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { asyncHandler, AppError } from '../middleware/error.middleware';
-import { File, FileReferenceType, FileType, StorageProvider } from '../../db/models/file.model';
+import { File, FileReferenceType, FileType, StorageProvider, FileCategory } from '../../db/models/file.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 // Configure multer storage
@@ -72,6 +72,34 @@ const getFileTypeFromExtension = (extension: string): FileType => {
   }
 };
 
+// Helper function to sanitize category value - accepts valid enum values
+// Maps Flutter app category values to database enum values
+const sanitizeCategory = (category: any): FileCategory | null => {
+  if (!category || typeof category !== 'string') {
+    return null;
+  }
+  const normalized = category.toLowerCase().trim();
+  
+  // Map to valid enum values
+  switch (normalized) {
+    case FileCategory.IMAGE:
+      return FileCategory.IMAGE;
+    case FileCategory.DOCUMENT:
+      return FileCategory.DOCUMENT;
+    case FileCategory.VIDEO:
+      return FileCategory.VIDEO;
+    case FileCategory.AUDIO:
+      return FileCategory.AUDIO;
+    case FileCategory.OTHER:
+      return FileCategory.OTHER;
+    case FileCategory.CONTRACT: // Legacy value, kept for backward compatibility
+      return FileCategory.CONTRACT;
+    default:
+      // Invalid category, return null
+      return null;
+  }
+};
+
 /**
  * Upload single file
  * POST /api/v1/files/upload
@@ -114,7 +142,7 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
     path: file.path, // Full path to the file
     mimeType: file.mimetype, // MIME type
     size: file.size, // File size in bytes
-    category: fileType === FileType.IMAGE ? 'image' : 'contract', // Legacy enum
+    category: sanitizeCategory(fileType === FileType.IMAGE ? 'image' : null), // Legacy enum - only 'image' is valid
     entityType: referenceType === FileReferenceType.COMPANY ? 'company' : 
                 referenceType === FileReferenceType.CONTRACT ? 'contract' : 'user', // Legacy enum
     entityId: referenceId, // Entity ID (ticket ID) - required
@@ -199,7 +227,9 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
     const originalFilename = metadata.originalFilename || file.originalname;
     const mimeType = metadata.mimeType || file.mimetype;
     const sizeBytes = metadata.size ? parseInt(metadata.size) : (file.size || 0);
-    const category = metadata.category || (fileType === 'image' ? 'image' : 'contract');
+    // Category is a legacy field - only 'image' is valid, others should be null
+    // Sanitize to ensure only valid enum values are used
+    const category = sanitizeCategory(metadata.category || (fileType === 'image' ? 'image' : null));
     const storageProvider = metadata.storageProvider || 'LOCAL';
     const description = metadata.description || null;
     
@@ -326,6 +356,8 @@ export const deleteFile = asyncHandler(async (req: AuthRequest, res: Response) =
     message: 'File deleted successfully',
   });
 });
+
+
 
 
 
