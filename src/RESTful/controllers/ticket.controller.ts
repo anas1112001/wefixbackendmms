@@ -750,7 +750,8 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
 /**
  * Update an existing ticket
- * Only Company Admin (18) and Team Leader (20) can update tickets
+ * - Company Admin (18) and Team Leader (20) can update all ticket fields
+ * - Technicians (21) and Sub-Technicians (22) can ONLY update ticket status
  * Rejects unauthorized updates
  * Tracks updatedBy & updatedAt automatically
  */
@@ -766,19 +767,23 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('Invalid ticket ID', 400, 'VALIDATION_ERROR');
   }
 
-  // Check if user has permission (admin or team leader)
-  // Role IDs: 18 = Admin, 20 = Team Leader
-  if (user.userRoleId !== 18 && user.userRoleId !== 20) {
-    throw new AppError(
-      'Forbidden: Only Company Admins and Team Leaders can update tickets',
-      403,
-      'FORBIDDEN'
-    );
-  }
-
   const companyId = user.companyId;
   if (!companyId) {
     throw new AppError('User is not associated with a company', 400, 'VALIDATION_ERROR');
+  }
+
+  // Check user role
+  const isAdmin = user.userRoleId === 18;
+  const isTeamLeader = user.userRoleId === 20;
+  const isTechnician = user.userRoleId === 21 || user.userRoleId === 22;
+
+  // Only allow Admin, Team Leader, or Technician roles
+  if (!isAdmin && !isTeamLeader && !isTechnician) {
+    throw new AppError(
+      'Forbidden: Only Company Admins, Team Leaders, and Technicians can update tickets',
+      403,
+      'FORBIDDEN'
+    );
   }
 
   // Find ticket and verify it belongs to user's company
@@ -792,6 +797,15 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
   if (!ticket) {
     throw new AppError('Ticket not found or access denied. You can only update tickets from your company.', 404, 'NOT_FOUND');
+  }
+
+  // Technicians can only update tickets assigned to them
+  if (isTechnician && ticket.assignToTechnicianId !== user.id) {
+    throw new AppError(
+      'Forbidden: You can only update tickets assigned to you',
+      403,
+      'FORBIDDEN'
+    );
   }
 
   // Update fields
@@ -818,8 +832,24 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     tools,
   } = req.body;
 
-  // Validate ticket type if provided
-  if (ticketTypeId) {
+  // Technicians can ONLY update ticket status
+  // Reject any other field updates from Technicians
+  if (isTechnician) {
+    const allowedFields = ['ticketStatusId'];
+    const providedFields = Object.keys(req.body).filter(key => req.body[key] !== undefined && key !== 'fileIds');
+    const unauthorizedFields = providedFields.filter(field => !allowedFields.includes(field));
+
+    if (unauthorizedFields.length > 0) {
+      throw new AppError(
+        `Forbidden: Technicians can only update ticket status. Cannot update: ${unauthorizedFields.join(', ')}`,
+        403,
+        'FORBIDDEN'
+      );
+    }
+  }
+
+  // Validate ticket type if provided (only for Admin/Team Leader)
+  if (ticketTypeId && !isTechnician) {
     const ticketType = await Lookup.findOne({
       where: { id: ticketTypeId, category: LookupCategory.TICKET_TYPE, isActive: true },
     });
@@ -842,7 +872,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
   // Role-based validation: Team Leaders can only update tickets assigned to themselves
   // They cannot reassign tickets to another Team Leader
-  if (user.userRoleId === 20 && assignToTeamLeaderId !== undefined && assignToTeamLeaderId !== user.id) {
+  if (isTeamLeader && assignToTeamLeaderId !== undefined && assignToTeamLeaderId !== user.id) {
     throw new AppError(
       'Team Leaders can only update tickets assigned to themselves. You cannot reassign tickets to another Team Leader.',
       403,
@@ -850,22 +880,22 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     );
   }
 
-  // Validate hierarchy if fields are being updated
-  if (contractId !== undefined) {
+  // Validate hierarchy if fields are being updated (only for Admin/Team Leader)
+  if (contractId !== undefined && !isTechnician) {
     const contract = await Contract.findByPk(contractId);
     if (!contract || contract.companyId !== companyId) {
       throw new AppError('Invalid contract or contract does not belong to your company', 400, 'VALIDATION_ERROR');
     }
   }
 
-  if (branchId !== undefined) {
+  if (branchId !== undefined && !isTechnician) {
     const branch = await Branch.findByPk(branchId);
     if (!branch || branch.companyId !== companyId) {
       throw new AppError('Invalid branch or branch does not belong to your company', 400, 'VALIDATION_ERROR');
     }
   }
 
-  if (zoneId !== undefined) {
+  if (zoneId !== undefined && !isTechnician) {
     const zone = await Zone.findByPk(zoneId);
     const finalBranchId = branchId !== undefined ? branchId : ticket.branchId;
     if (!zone || zone.branchId !== finalBranchId) {
@@ -873,8 +903,8 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     }
   }
 
-  // Validate Team Leader if being updated
-  if (assignToTeamLeaderId !== undefined) {
+  // Validate Team Leader if being updated (only for Admin/Team Leader)
+  if (assignToTeamLeaderId !== undefined && !isTechnician) {
     const teamLeader = await User.findOne({
       where: { id: assignToTeamLeaderId, companyId, isDeleted: false },
       include: [{ model: Lookup, as: 'userRoleLookup', required: false }],
@@ -887,8 +917,8 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     }
   }
 
-  // Validate Technician if being updated
-  if (assignToTechnicianId !== undefined) {
+  // Validate Technician if being updated (only for Admin/Team Leader)
+  if (assignToTechnicianId !== undefined && !isTechnician) {
     const technician = await User.findOne({
       where: { id: assignToTechnicianId, companyId, isDeleted: false },
       include: [{ model: Lookup, as: 'userRoleLookup', required: false }],
@@ -901,24 +931,24 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     }
   }
 
-  // Update other fields
-  if (contractId !== undefined) ticket.contractId = contractId;
-  if (branchId !== undefined) ticket.branchId = branchId;
-  if (zoneId !== undefined) ticket.zoneId = zoneId;
-  if (locationMap !== undefined) ticket.locationMap = locationMap;
-  if (locationDescription !== undefined) ticket.locationDescription = locationDescription;
-  if (ticketDate !== undefined) ticket.ticketDate = ticketDate;
-  if (ticketTimeFrom !== undefined) ticket.ticketTimeFrom = ticketTimeFrom;
-  if (ticketTimeTo !== undefined) ticket.ticketTimeTo = ticketTimeTo;
-  if (assignToTeamLeaderId !== undefined) ticket.assignToTeamLeaderId = assignToTeamLeaderId;
-  if (assignToTechnicianId !== undefined) ticket.assignToTechnicianId = assignToTechnicianId;
-  if (ticketDescription !== undefined) ticket.ticketDescription = ticketDescription;
-  if (havingFemaleEngineer !== undefined) ticket.havingFemaleEngineer = havingFemaleEngineer;
-  if (customerName !== undefined) ticket.customerName = customerName;
-  if (withMaterial !== undefined) ticket.withMaterial = withMaterial;
-  if (mainServiceId !== undefined) ticket.mainServiceId = mainServiceId;
-  if (serviceDescription !== undefined) ticket.serviceDescription = serviceDescription;
-  if (tools !== undefined) ticket.tools = tools;
+  // Update other fields (only for Admin/Team Leader, Technicians can only update status)
+  if (contractId !== undefined && !isTechnician) ticket.contractId = contractId;
+  if (branchId !== undefined && !isTechnician) ticket.branchId = branchId;
+  if (zoneId !== undefined && !isTechnician) ticket.zoneId = zoneId;
+  if (locationMap !== undefined && !isTechnician) ticket.locationMap = locationMap;
+  if (locationDescription !== undefined && !isTechnician) ticket.locationDescription = locationDescription;
+  if (ticketDate !== undefined && !isTechnician) ticket.ticketDate = ticketDate;
+  if (ticketTimeFrom !== undefined && !isTechnician) ticket.ticketTimeFrom = ticketTimeFrom;
+  if (ticketTimeTo !== undefined && !isTechnician) ticket.ticketTimeTo = ticketTimeTo;
+  if (assignToTeamLeaderId !== undefined && !isTechnician) ticket.assignToTeamLeaderId = assignToTeamLeaderId;
+  if (assignToTechnicianId !== undefined && !isTechnician) ticket.assignToTechnicianId = assignToTechnicianId;
+  if (ticketDescription !== undefined && !isTechnician) ticket.ticketDescription = ticketDescription;
+  if (havingFemaleEngineer !== undefined && !isTechnician) ticket.havingFemaleEngineer = havingFemaleEngineer;
+  if (customerName !== undefined && !isTechnician) ticket.customerName = customerName;
+  if (withMaterial !== undefined && !isTechnician) ticket.withMaterial = withMaterial;
+  if (mainServiceId !== undefined && !isTechnician) ticket.mainServiceId = mainServiceId;
+  if (serviceDescription !== undefined && !isTechnician) ticket.serviceDescription = serviceDescription;
+  if (tools !== undefined && !isTechnician) ticket.tools = tools;
   
   // Track who updated the ticket and when
   // updatedAt is automatically set by Sequelize @UpdatedAt decorator
