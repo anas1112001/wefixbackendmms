@@ -164,7 +164,9 @@ export class Server {
       const omsBaseUrl = process.env.OMS_BASE_URL;
       if (omsBaseUrl) {
         // Prevent infinite loop: if request comes from backend-oms proxy, don't proxy again
-        if (req.headers['x-proxy-from'] === 'backend-oms') {
+        const proxyFrom = req.headers['x-proxy-from'] || req.headers['X-Proxy-From'];
+        if (proxyFrom === 'backend-oms') {
+          console.log(`[PROXY] Request from backend-oms detected, skipping proxy to prevent loop`);
           return next(); // Pass to 404 handler
         }
         
@@ -221,14 +223,17 @@ export class Server {
           }
         });
         
-        // Set timeout
-        proxyReq.setTimeout(10000, () => {
+        // Set timeout (reduced to 5 seconds to fail faster)
+        proxyReq.setTimeout(5000, () => {
           console.error(`[PROXY] Timeout proxying from backend-oms: ${omsUrl}`);
           proxyReq.destroy();
           if (!res.headersSent) {
-            res.status(504).send('Gateway timeout');
+            res.status(404).send('File not found');
           }
         });
+        
+        // End the request (required when using client.request())
+        proxyReq.end();
         
         return; // Don't call next() - we're handling the request
       }
