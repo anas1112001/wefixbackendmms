@@ -59,8 +59,11 @@ export class Server {
     // Request logging in development
     if (process.env.NODE_ENV !== 'production') {
       this.app.use((req, res, next) => {
-        // Skip logging for static file requests
-        if (!req.path.startsWith('/WeFixFiles') && !req.path.startsWith('/uploads')) {
+        // Skip logging for static file requests and health check
+        if (!req.path.startsWith('/WeFixFiles') && 
+            !req.path.startsWith('/uploads') && 
+            req.path !== '/health' &&
+            req.path !== '/api/v1/health') {
           const authHeader = req.headers.authorization;
           if (!authHeader) {
             console.log(`${req.method} ${req.path} - No authorization header found`);
