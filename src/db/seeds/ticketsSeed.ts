@@ -114,7 +114,7 @@ const getRandomTicketDescription = (ticketType: string, mainService: string): st
 // Generate 200 tickets
 const generateTickets = (): TicketData[] => {
   const tickets: TicketData[] = [];
-  const ticketTypes = [202, 203, 204]; // Preventive, Corrective, Emergency
+  const ticketTypes = [203, 204]; // Corrective, Emergency (Preventive removed)
   const ticketStatuses = [109, 110, 111, 112]; // Pending, In Progress, Completed, Cancelled
   const mainServices = [18, 19, 20]; // Electrical, Plumbing, HVAC
   const toolsSets = [

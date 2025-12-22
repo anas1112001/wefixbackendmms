@@ -856,26 +856,14 @@ export const TICKET_CODES: readonly LookupData[] = [
 export const TICKET_TYPES: readonly LookupData[] = [
   {
     category: LookupCategory.TICKET_TYPE,
-    code: 'PREV',
-    description: 'Preventive maintenance ticket',
-    id: 202,
-    isActive: true,
-    isDefault: true,
-    name: 'Preventive',
-    nameArabic: 'وقائي',
-    orderId: 1,
-    parentLookupId: null,
-  },
-  {
-    category: LookupCategory.TICKET_TYPE,
     code: 'CORR',
     description: 'Corrective maintenance ticket',
     id: 203,
     isActive: true,
-    isDefault: false,
+    isDefault: true,
     name: 'Corrective',
     nameArabic: 'تصحيحي',
-    orderId: 2,
+    orderId: 1,
     parentLookupId: null,
   },
   {
@@ -887,7 +875,7 @@ export const TICKET_TYPES: readonly LookupData[] = [
     isDefault: false,
     name: 'Emergency',
     nameArabic: 'طوارئ',
-    orderId: 3,
+    orderId: 2,
     parentLookupId: null,
   },
 ];
