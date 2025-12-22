@@ -118,19 +118,18 @@ export class Server {
     
     // Custom middleware to serve files from /WeFixFiles route
     // This handles file serving with proper error handling for paths like /WeFixFiles/Images/xx.png
+    // Matches backend-oms structure for single source of truth
     this.app.use('/WeFixFiles', (req, res, next) => {
-      // Extract path after /WeFixFiles (e.g., /WeFixFiles/Images/xx.png -> Images/xx.png or just xx.png)
+      // Extract path after /WeFixFiles (e.g., /WeFixFiles/Images/xx.png -> Images/xx.png)
       const relativePath = req.path.replace(/^\/+/, ''); // Remove leading slashes
       
       if (!relativePath) {
         return next(); // No path, pass to next middleware
       }
       
-      // Extract filename from path (handle both /WeFixFiles/Images/xx.png and /WeFixFiles/xx.png)
-      const filename = relativePath.split('/').pop() || relativePath;
+      // Build full path matching the stored structure (e.g., /WeFixFiles/Images/xx.png -> public/WeFixFiles/Images/xx.png)
+      const filePath = path.join(process.cwd(), 'public', 'WeFixFiles', relativePath);
       
-      // Try to find file in uploadsDir (files are stored directly in public/WeFixFiles/)
-      const filePath = path.join(uploadsDir, filename);
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         // Set proper headers
         if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
@@ -170,18 +169,18 @@ export class Server {
       const filePath = path.join(uploadsDir, filename);
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         // Set proper headers
-        if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
-          res.setHeader('Content-Type', 'audio/mpeg');
-        } else if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
-          res.setHeader('Content-Type', 'video/mp4');
-        } else if (filePath.endsWith('.pdf')) {
-          res.setHeader('Content-Type', 'application/pdf');
-        } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-          res.setHeader('Content-Type', 'image/jpeg');
-        } else if (filePath.endsWith('.png')) {
-          res.setHeader('Content-Type', 'image/png');
-        }
-        res.setHeader('Access-Control-Allow-Origin', '*');
+          if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
+            res.setHeader('Content-Type', 'audio/mpeg');
+          } else if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
+            res.setHeader('Content-Type', 'video/mp4');
+          } else if (filePath.endsWith('.pdf')) {
+            res.setHeader('Content-Type', 'application/pdf');
+          } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg');
+          } else if (filePath.endsWith('.png')) {
+            res.setHeader('Content-Type', 'image/png');
+          }
+          res.setHeader('Access-Control-Allow-Origin', '*');
         return res.sendFile(filePath);
       }
       

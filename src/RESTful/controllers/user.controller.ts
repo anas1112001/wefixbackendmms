@@ -14,9 +14,11 @@ import UserRepository from '../services/user/user.repository';
 import multer from 'multer';
 
 // Configure multer for profile image uploads
+// Store in WeFixFiles/Images to match backend-oms structure for single source of truth
 const profileImageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'public', 'WeFixFiles');
+    // Store in WeFixFiles/Images to match backend-oms structure
+    const uploadDir = path.join(process.cwd(), 'public', 'WeFixFiles', 'Images');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -416,8 +418,9 @@ export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response
   if (req.file) {
     // File was uploaded via multer
     const filename = req.file.filename;
-    // Store relative path: /uploads/filename.ext
-    updateData.profileImage = `/uploads/${filename}`;
+    // Store relative path matching backend-oms structure: /WeFixFiles/Images/filename.ext
+    // This ensures single source of truth - both backend-mms and backend-oms use same path
+    updateData.profileImage = `/WeFixFiles/Images/${filename}`;
   } else if (req.body.profileImage) {
     // Profile image URL/path provided as string (for backward compatibility)
     updateData.profileImage = req.body.profileImage;
