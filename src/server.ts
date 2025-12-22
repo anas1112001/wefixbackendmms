@@ -155,7 +155,9 @@ export class Server {
       // are accessible from mobile-user (backend-mms)
       const omsBaseUrl = process.env.OMS_BASE_URL;
       if (omsBaseUrl) {
-        const omsUrl = `${omsBaseUrl}${req.path}`;
+        // req.path is /Images/xx.png (route /WeFixFiles already matched)
+        // We need to add /WeFixFiles back to the path for the proxy request
+        const omsUrl = `${omsBaseUrl}/WeFixFiles${req.path}`;
         console.log(`[PROXY] Requesting file from backend-oms: ${omsUrl}`);
         
         // Use native https/http modules to proxy
