@@ -72,10 +72,10 @@ export class Ticket extends Model {
   public zone: Zone;
 
   @Column({
-    allowNull: false,
+    allowNull: true,
     type: DataTypes.STRING(255),
   })
-  public locationMap: string;
+  public locationMap: string | null;
 
   @Column({
     allowNull: false,

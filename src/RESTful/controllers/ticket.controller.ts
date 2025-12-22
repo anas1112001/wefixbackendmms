@@ -984,7 +984,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   if (contractId !== undefined && !isTechnician) ticket.contractId = contractId;
   if (branchId !== undefined && !isTechnician) ticket.branchId = branchId;
   if (zoneId !== undefined && !isTechnician) ticket.zoneId = zoneId;
-  if (locationMap !== undefined && !isTechnician) ticket.locationMap = locationMap;
+  if (locationMap !== undefined && !isTechnician) ticket.locationMap = locationMap || null; // Allow null for optional field
   if (locationDescription !== undefined && !isTechnician) ticket.locationDescription = locationDescription;
   if (ticketDate !== undefined && !isTechnician) ticket.ticketDate = ticketDate;
   if (ticketTimeFrom !== undefined && !isTechnician) ticket.ticketTimeFrom = ticketTimeFrom;
