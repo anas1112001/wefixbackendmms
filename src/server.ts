@@ -116,6 +116,25 @@ export class Server {
       console.log(`📁 Created uploads directory: ${uploadsDir}`);
     }
     
+    // Also serve files directly from /WeFixFiles route (for compatibility with backend-oms paths)
+    // This allows access to files via /WeFixFiles/Images/filename.ext or /WeFixFiles/Contracts/filename.ext
+    this.app.use('/WeFixFiles', express.static(uploadsDir, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
+          res.setHeader('Content-Type', 'audio/mpeg');
+        } else if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
+          res.setHeader('Content-Type', 'video/mp4');
+        } else if (filePath.endsWith('.pdf')) {
+          res.setHeader('Content-Type', 'application/pdf');
+        } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+          res.setHeader('Content-Type', 'image/jpeg');
+        } else if (filePath.endsWith('.png')) {
+          res.setHeader('Content-Type', 'image/png');
+        }
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      },
+    }));
+    
     // Serve static files from uploads directory
     // Also serve from old location for backward compatibility with existing files
     const oldUploadsDir = path.join(process.cwd(), 'uploads');
