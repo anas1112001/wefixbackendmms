@@ -143,7 +143,7 @@ export class Server {
       // Build full path matching the stored structure (e.g., /WeFixFiles/Images/xx.png -> public/WeFixFiles/Images/xx.png)
       const filePath = path.join(process.cwd(), 'public', 'WeFixFiles', relativePath);
       
-      // Check if file exists locally
+      // Check if file exists locally FIRST (before checking proxy header)
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         // Set proper headers
         if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
@@ -161,17 +161,19 @@ export class Server {
         return res.sendFile(filePath);
       }
       
-      // File doesn't exist locally, try to proxy from backend-oms
+      // File doesn't exist locally, check if request comes from backend-oms proxy
+      // Prevent infinite loop: if request comes from backend-oms proxy, don't proxy again
+      const proxyFrom = req.headers['x-proxy-from'] || req.headers['X-Proxy-From'];
+      if (proxyFrom === 'backend-oms') {
+        console.log(`[PROXY] Request from backend-oms detected, skipping proxy to prevent loop`);
+        return next(); // Pass to 404 handler
+      }
+      
+      // File doesn't exist locally and not from proxy, try to proxy from backend-oms
       // This ensures single source of truth - images uploaded via frontend-oms (backend-oms) 
       // are accessible from mobile-user (backend-mms)
       const omsBaseUrl = process.env.OMS_BASE_URL;
       if (omsBaseUrl) {
-        // Prevent infinite loop: if request comes from backend-oms proxy, don't proxy again
-        const proxyFrom = req.headers['x-proxy-from'] || req.headers['X-Proxy-From'];
-        if (proxyFrom === 'backend-oms') {
-          console.log(`[PROXY] Request from backend-oms detected, skipping proxy to prevent loop`);
-          return next(); // Pass to 404 handler
-        }
         
         // req.path is /Images/xx.png (route /WeFixFiles already matched)
         // We need to add /WeFixFiles back to the path for the proxy request
