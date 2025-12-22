@@ -262,4 +262,11 @@ export class User extends Model {
     type: DataTypes.STRING(10),
   })
   public gender: string | null
+
+  @Column({
+    allowNull: true,
+    comment: 'User profile image URL or file path',
+    type: DataTypes.STRING(512),
+  })
+  public profileImage: string | null
 }

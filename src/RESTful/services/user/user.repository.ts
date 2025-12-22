@@ -157,6 +157,12 @@ class UserRepository {
       if (userData.companyId) {
         userCreationData.companyId = userData.companyId;
       }
+      if (userData.profileImage) {
+        userCreationData.profileImage = userData.profileImage;
+      }
+      if (userData.gender) {
+        userCreationData.gender = userData.gender;
+      }
 
       const newUser = await User.create(userCreationData);
       return newUser as UserOrm;

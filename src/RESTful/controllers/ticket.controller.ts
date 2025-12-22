@@ -91,7 +91,7 @@ export const getCompanyTickets = asyncHandler(async (req: AuthRequest, res: Resp
         model: User,
         as: 'assignToTechnicianUser',
         required: false,
-        attributes: ['id', 'fullName', 'userNumber'],
+        attributes: ['id', 'fullName', 'userNumber', 'profileImage'],
       },
     ],
     order: [['createdAt', 'DESC']],
@@ -368,13 +368,13 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
         model: User,
         as: 'assignToTeamLeaderUser',
         required: false,
-        attributes: ['id', 'fullName', 'userNumber'],
+        attributes: ['id', 'fullName', 'userNumber', 'profileImage'],
       },
       {
         model: User,
         as: 'assignToTechnicianUser',
         required: false,
-        attributes: ['id', 'fullName', 'userNumber'],
+        attributes: ['id', 'fullName', 'userNumber', 'profileImage'],
       },
       {
         model: Contract,
@@ -554,6 +554,7 @@ function formatTicket(ticket: Ticket): any {
           id: ticket.assignToTeamLeaderUser.id,
           name: ticket.assignToTeamLeaderUser.fullName,
           userNumber: ticket.assignToTeamLeaderUser.userNumber,
+          profileImage: ticket.assignToTeamLeaderUser.profileImage || null,
         }
       : null,
     technician: ticket.assignToTechnicianUser
@@ -561,6 +562,7 @@ function formatTicket(ticket: Ticket): any {
           id: ticket.assignToTechnicianUser.id,
           name: ticket.assignToTechnicianUser.fullName,
           userNumber: ticket.assignToTechnicianUser.userNumber,
+          profileImage: ticket.assignToTechnicianUser.profileImage || null,
         }
       : null,
     source: ticket.source,
@@ -774,7 +776,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
       { model: Lookup, as: 'ticketTypeLookup', required: false },
       { model: Lookup, as: 'ticketStatusLookup', required: false },
       { model: Lookup, as: 'mainServiceLookup', required: false },
-      { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber'] },
+      { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber', 'profileImage'] },
     ],
   });
 
@@ -1026,7 +1028,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
       { model: Lookup, as: 'ticketTypeLookup', required: false },
       { model: Lookup, as: 'ticketStatusLookup', required: false },
       { model: Lookup, as: 'mainServiceLookup', required: false },
-      { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber'] },
+      { model: User, as: 'assignToTechnicianUser', required: false, attributes: ['id', 'fullName', 'userNumber', 'profileImage'] },
     ],
   });
 

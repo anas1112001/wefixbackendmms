@@ -14,6 +14,7 @@ router.get('/token/:token', userController.getUserByToken);
 
 // Protected routes
 router.get('/me', authenticateToken, userController.getCurrentUser);
+router.get('/profile', authenticateToken, userController.getProfile);
 router.get('/', authenticateToken, userController.getAllUsers);
 router.get('/students', authenticateToken, userController.getStudents);
 router.get('/:id', authenticateToken, userController.getUserById);

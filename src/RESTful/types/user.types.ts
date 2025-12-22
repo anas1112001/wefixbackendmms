@@ -19,6 +19,8 @@ export interface UserOrm {
   countryCode: string | null;
   username: string | null;
   companyId: number | null;
+  profileImage: string | null;
+  gender: string | null;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
@@ -40,6 +42,8 @@ export interface CreateUserInput {
   countryCode?: string;
   username?: string;
   companyId?: number;
+  profileImage?: string;
+  gender?: string;
 }
 
 export interface UpdateUserInput {
@@ -55,6 +59,8 @@ export interface UpdateUserInput {
   countryCode?: string;
   username?: string;
   companyId?: number;
+  profileImage?: string;
+  gender?: string;
 }
 
 export interface LoginInput {

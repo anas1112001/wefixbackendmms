@@ -318,6 +318,29 @@ export const getCurrentUser = asyncHandler(async (req: AuthRequest, res: Respons
   });
 });
 
+export const getProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    throw new AppError('User not authenticated', 401, 'UNAUTHORIZED');
+  }
+
+  // Get full user data with profileImage
+  const user = await userRepository.getUserById(req.user.id.toString());
+
+  if (!user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  // Format response to match ProfileModel structure expected by mobile app
+  res.status(200).json({
+    profile: {
+      email: user.email || null,
+      firstname: user.fullName || null,
+      lastname: user.fullNameEnglish || null,
+      profileImage: user.profileImage || null,
+    },
+  });
+});
+
 export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user || !req.user.id) {
     throw new AppError('User not authenticated', 401, 'UNAUTHORIZED');
