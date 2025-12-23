@@ -51,7 +51,7 @@ export const up = async (queryInterface: QueryInterface) => {
       type: DataTypes.STRING(255),
     },
     location_description: {
-      allowNull: false,
+      allowNull: true,
       type: DataTypes.STRING(255),
     },
     ticket_type_id: {
