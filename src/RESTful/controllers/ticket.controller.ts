@@ -643,11 +643,12 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
                       ticketType.code === 'EMRG';
 
   // Validation - Emergency tickets now have time slots (current time + 120 minutes)
-  const baseRequiredFields = !contractId || !branchId || !zoneId || !locationDescription || 
+  // Location description is optional (can be null)
+  const baseRequiredFields = !contractId || !branchId || !zoneId || 
                              !ticketTypeId || !ticketDate || !ticketTimeFrom || !ticketTimeTo ||
                              !assignToTeamLeaderId || !assignToTechnicianId || !mainServiceId;
   
-  // Location map is optional (can be null)
+  // Location map and location description are optional (can be null)
   
   if (baseRequiredFields) {
     throw new AppError('Missing required fields', 400, 'VALIDATION_ERROR');
@@ -736,7 +737,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     branchId,
     zoneId,
     locationMap: locationMap || null, // Optional field
-    locationDescription,
+    locationDescription: locationDescription || null, // Optional field
     ticketTypeId,
     ticketStatusId: defaultStatus.id,
     ticketDate,

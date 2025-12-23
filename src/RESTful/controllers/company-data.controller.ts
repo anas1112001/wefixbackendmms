@@ -89,6 +89,7 @@ export const getCompanyBranches = asyncHandler(async (req: AuthRequest, res: Res
 
 /**
  * Get zones for the logged-in company admin's company branches
+ * Optionally filter by branchId if provided as query parameter
  */
 export const getCompanyZones = asyncHandler(async (req: AuthRequest, res: Response) => {
   const {user} = req;
@@ -103,31 +104,57 @@ export const getCompanyZones = asyncHandler(async (req: AuthRequest, res: Respon
     throw new AppError('User is not associated with a company', 400, 'VALIDATION_ERROR');
   }
 
-  // Get all branches for the company first
-  const branches = await Branch.findAll({
-    where: {
-      companyId,
-      isDeleted: false,
-    },
-    attributes: ['id'],
-  });
+  // Get branchId from query parameter if provided
+  const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : null;
 
-  const branchIds = branches.map((b) => b.id);
+  // Build where clause for zones
+  const zoneWhereClause: any = {
+    isDeleted: false,
+  };
 
-  if (branchIds.length === 0) {
-    return res.status(200).json({
-      success: true,
-      message: 'Zones retrieved successfully',
-      data: [],
+  if (branchId) {
+    // If branchId is provided, verify it belongs to the company
+    const branch = await Branch.findOne({
+      where: {
+        id: branchId,
+        companyId,
+        isDeleted: false,
+      },
     });
+
+    if (!branch) {
+      throw new AppError('Invalid branch or branch does not belong to your company', 400, 'VALIDATION_ERROR');
+    }
+
+    // Filter zones by the specific branch
+    zoneWhereClause.branchId = branchId;
+  } else {
+    // If no branchId provided, get all branches for the company first
+    const branches = await Branch.findAll({
+      where: {
+        companyId,
+        isDeleted: false,
+      },
+      attributes: ['id'],
+    });
+
+    const branchIds = branches.map((b) => b.id);
+
+    if (branchIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'Zones retrieved successfully',
+        data: [],
+      });
+    }
+
+    // Get zones for all company branches
+    zoneWhereClause.branchId = { [Op.in]: branchIds };
   }
 
-  // Get zones for these branches
+  // Get zones based on the where clause
   const zones = await Zone.findAll({
-    where: {
-      branchId: { [Op.in]: branchIds },
-      isDeleted: false,
-    },
+    where: zoneWhereClause,
     order: [['createdAt', 'DESC']],
   });
 
