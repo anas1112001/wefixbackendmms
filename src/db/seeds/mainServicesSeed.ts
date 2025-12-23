@@ -7,6 +7,7 @@ export interface MainServiceData {
   nameArabic: string | null;
   code: string | null;
   description: string | null;
+  icon: string | null;
   orderId: number;
   isDefault: boolean;
   isActive: boolean;
@@ -21,6 +22,7 @@ export const MAIN_SERVICES_DATA: readonly MainServiceData[] = [
     nameArabic: 'كهرباء',
     code: 'ELEC',
     description: 'Electrical services including installation, repair, and maintenance',
+    icon: '/WeFixFiles/Icons/electrical.png',
     orderId: 1,
     isDefault: false,
     isActive: true,
@@ -33,6 +35,7 @@ export const MAIN_SERVICES_DATA: readonly MainServiceData[] = [
     nameArabic: 'سباكة',
     code: 'PLUMB',
     description: 'Plumbing services including installation and repair',
+    icon: '/WeFixFiles/Icons/plumbing.png',
     orderId: 2,
     isDefault: false,
     isActive: true,
@@ -45,6 +48,7 @@ export const MAIN_SERVICES_DATA: readonly MainServiceData[] = [
     nameArabic: 'تكييف وتدفئة',
     code: 'HVAC',
     description: 'Heating, Ventilation, and Air Conditioning services',
+    icon: '/WeFixFiles/Icons/hvac.png',
     orderId: 3,
     isDefault: false,
     isActive: true,
@@ -57,6 +61,7 @@ export const MAIN_SERVICES_DATA: readonly MainServiceData[] = [
     nameArabic: 'مصاعد',
     code: 'ELEV',
     description: 'Elevator maintenance and repair services',
+    icon: '/WeFixFiles/Icons/elevator.png',
     orderId: 4,
     isDefault: false,
     isActive: true,
@@ -69,6 +74,7 @@ export const MAIN_SERVICES_DATA: readonly MainServiceData[] = [
     nameArabic: 'نجارة',
     code: 'CARP',
     description: 'Carpentry and woodwork services',
+    icon: '/WeFixFiles/Icons/carpentry.png',
     orderId: 5,
     isDefault: false,
     isActive: true,
@@ -81,6 +87,7 @@ export const MAIN_SERVICES_DATA: readonly MainServiceData[] = [
     nameArabic: 'دهان',
     code: 'PAINT',
     description: 'Painting and finishing services',
+    icon: '/WeFixFiles/Icons/painting.png',
     orderId: 6,
     isDefault: false,
     isActive: true,

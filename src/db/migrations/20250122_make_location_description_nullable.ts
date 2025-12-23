@@ -48,3 +48,5 @@ export const down = async (queryInterface: QueryInterface) => {
   
   console.log('⚠️  Reverted location_description and ticket_description columns to NOT NULL');
 };
+
+

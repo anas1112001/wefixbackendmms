@@ -543,6 +543,8 @@ function formatTicket(ticket: Ticket): any {
           id: ticket.mainServiceLookup.id,
           name: ticket.mainServiceLookup.name,
           nameArabic: ticket.mainServiceLookup.nameArabic,
+          icon: ticket.mainServiceLookup.icon || null,
+          image: ticket.mainServiceLookup.icon || null, // Alias for backward compatibility
         }
       : null,
     havingFemaleEngineer: ticket.havingFemaleEngineer,

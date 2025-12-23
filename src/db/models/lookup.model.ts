@@ -69,6 +69,13 @@ export class Lookup extends Model {
 
   @Column({
     allowNull: true,
+    type: DataTypes.STRING(500),
+    comment: 'Icon/image path for the service (e.g., /WeFixFiles/Icons/electrical.png)',
+  })
+  public icon: string | null;
+
+  @Column({
+    allowNull: true,
     comment: 'JSON array of entity permissions (e.g., ["Companies", "Contracts", "Tickets"])',
     type: DataTypes.TEXT,
   })

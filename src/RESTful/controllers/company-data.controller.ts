@@ -192,6 +192,8 @@ export const getMainServices = asyncHandler(async (req: AuthRequest, res: Respon
     subtitle: service.nameArabic || '',
     name: service.name,
     nameArabic: service.nameArabic,
+    icon: service.icon || null,
+    image: service.icon || null, // Alias for backward compatibility
   }));
 
   res.status(200).json({
@@ -382,5 +384,6 @@ export const getTicketStatuses = asyncHandler(async (req: AuthRequest, res: Resp
     data: formattedStatuses,
   });
 });
+
 
 
