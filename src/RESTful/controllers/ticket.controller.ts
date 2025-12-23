@@ -518,7 +518,7 @@ function formatTicket(ticket: Ticket): any {
         }
       : null,
     locationMap: ticket.locationMap,
-    locationDescription: ticket.locationDescription,
+    ticketTitle: ticket.ticketTitle,
     ticketType: ticket.ticketTypeLookup
       ? {
           id: ticket.ticketTypeLookup.id,
@@ -617,7 +617,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     customerName,
     fileIds,
     havingFemaleEngineer,
-    locationDescription,
+    ticketTitle,
     locationMap,
     mainServiceId,
     serviceDescription,
@@ -643,10 +643,10 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
                       ticketType.code === 'EMRG';
 
   // Validation - Emergency tickets now have time slots (current time + 120 minutes)
-  // Location description is optional (can be null)
+  // Ticket title is required
   const baseRequiredFields = !contractId || !branchId || !zoneId || 
                              !ticketTypeId || !ticketDate || !ticketTimeFrom || !ticketTimeTo ||
-                             !assignToTeamLeaderId || !assignToTechnicianId || !mainServiceId;
+                             !assignToTeamLeaderId || !assignToTechnicianId || !mainServiceId || !ticketTitle;
   
   // Location map and location description are optional (can be null)
   
@@ -737,7 +737,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     branchId,
     zoneId,
     locationMap: locationMap || null, // Optional field
-    locationDescription: locationDescription || null, // Optional field
+    ticketTitle: ticketTitle || '', // Required field
     ticketTypeId,
     ticketStatusId: defaultStatus.id,
     ticketDate,
@@ -868,7 +868,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     customerName,
     fileIds,
     havingFemaleEngineer,
-    locationDescription,
+    ticketTitle,
     locationMap,
     mainServiceId,
     serviceDescription,
@@ -988,7 +988,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   if (branchId !== undefined && !isTechnician) ticket.branchId = branchId;
   if (zoneId !== undefined && !isTechnician) ticket.zoneId = zoneId;
   if (locationMap !== undefined && !isTechnician) ticket.locationMap = locationMap || null; // Allow null for optional field
-  if (locationDescription !== undefined && !isTechnician) ticket.locationDescription = locationDescription;
+  if (ticketTitle !== undefined && !isTechnician) ticket.ticketTitle = ticketTitle || '';
   if (ticketDate !== undefined && !isTechnician) ticket.ticketDate = ticketDate;
   if (ticketTimeFrom !== undefined && !isTechnician) ticket.ticketTimeFrom = ticketTimeFrom;
   if (ticketTimeTo !== undefined && !isTechnician) ticket.ticketTimeTo = ticketTimeTo;

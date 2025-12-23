@@ -78,10 +78,11 @@ export class Ticket extends Model {
   public locationMap: string | null;
 
   @Column({
-    allowNull: true,
+    allowNull: false,
     type: DataTypes.STRING(255),
+    defaultValue: '',
   })
-  public locationDescription: string | null;
+  public ticketTitle: string;
 
   @ForeignKey(() => Lookup)
   @Column({
