@@ -39,3 +39,25 @@ export const ZONES_DATA: readonly Omit<ZoneSeedData, 'branchId'>[] = [
   },
 ];
 
+// Zones specifically for Salt Branch (Gamma Solutions)
+export const SALT_BRANCH_ZONES: readonly Omit<ZoneSeedData, 'branchId'>[] = [
+  {
+    zoneTitle: 'Salt Zone 1 - City Center',
+    zoneNumber: 'SALT-Z001',
+    zoneDescription: 'Salt city center and main commercial area',
+    isActive: true,
+  },
+  {
+    zoneTitle: 'Salt Zone 2 - Residential Areas',
+    zoneNumber: 'SALT-Z002',
+    zoneDescription: 'Residential neighborhoods in Salt',
+    isActive: true,
+  },
+  {
+    zoneTitle: 'Salt Zone 3 - Industrial Zone',
+    zoneNumber: 'SALT-Z003',
+    zoneDescription: 'Industrial and manufacturing areas in Salt',
+    isActive: true,
+  },
+];
+

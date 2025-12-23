@@ -12,6 +12,7 @@ import {
   seedUsers,
   seedZones,
 } from './seedFunctions';
+import { addSaltBranchZones } from './addSaltBranchZones';
 
 import { orm } from '../orm';
 
@@ -92,6 +93,8 @@ export const runAllSeeds = async (options: SeedOptions = {}): Promise<void> => {
 
     if (!skip.includes('zones')) {
       await seedZones(force);
+      // Add zones specifically for Salt Branch
+      await addSaltBranchZones();
     }
 
     if (!skip.includes('maintenanceServices')) {
@@ -145,6 +148,10 @@ export const runSeed = async (seedName: string, force: boolean = false): Promise
         break;
       case 'zones':
         await seedZones(force);
+        await addSaltBranchZones();
+        break;
+      case 'saltBranchZones':
+        await addSaltBranchZones();
         break;
       case 'maintenanceServices':
         await seedMaintenanceServices(force);

@@ -13,7 +13,7 @@ import { USER_DATA } from './usersSeed';
 
 // Password: Jadcom@1100 (hashed with bcrypt)
 const hashedPassword = '$2b$10$Q4bQvCwOaZZYpLm5aYvWauQx5lfuY.zXzXk3knSiro2VO1iMyHOy6';
-import { ZONES_DATA } from './zonesSeed';
+import { ZONES_DATA, SALT_BRANCH_ZONES } from './zonesSeed';
 
 import { Branch } from '../models/branch.model';
 import { Company } from '../models/company.model';
@@ -932,7 +932,14 @@ export const seedZones = async (force: boolean = false): Promise<void> => {
       branchIdMap.set(index + 1, branch.id);
     });
 
+    // Find Salt Branch for Gamma Solutions (companyId: 2)
+    const saltBranch = branches.find(
+      (branch) => branch.branchTitle === 'Salt Branch' || branch.branchNameEnglish === 'Salt Branch'
+    );
+
     let createdCount = 0;
+    
+    // Create zones for all branches (existing logic)
     for (let i = 0; i < ZONES_DATA.length; i++) {
       const zoneData = ZONES_DATA[i];
       try {
@@ -950,6 +957,28 @@ export const seedZones = async (force: boolean = false): Promise<void> => {
       } catch (error: any) {
         console.error(`   ⚠️  Error creating zone:`, error.message);
       }
+    }
+
+    // Add zones specifically for Salt Branch if it exists
+    if (saltBranch) {
+      for (const zoneData of SALT_BRANCH_ZONES) {
+        try {
+          await Zone.create({
+            zoneTitle: zoneData.zoneTitle,
+            zoneNumber: zoneData.zoneNumber,
+            zoneDescription: zoneData.zoneDescription,
+            branchId: saltBranch.id,
+            isActive: zoneData.isActive,
+          });
+
+          createdCount++;
+          console.log(`   ✅ Created zone "${zoneData.zoneTitle}" for Salt Branch`);
+        } catch (error: any) {
+          console.error(`   ⚠️  Error creating zone for Salt Branch:`, error.message);
+        }
+      }
+    } else {
+      console.log('   ⚠️  Salt Branch not found. Skipping Salt Branch zones.');
     }
 
     console.log(`   ✅ Seeded ${createdCount} zones`);
