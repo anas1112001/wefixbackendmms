@@ -10,10 +10,36 @@ import { asyncHandler, AppError } from '../middleware/error.middleware';
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Use the volume mount path for persistence in Docker
-    // This matches the volume mount in docker-compose.yml: /app/public/WeFixFiles
+    // Get referenceId (ticketId) and referenceType from request body
+    const referenceId = req.body.referenceId ? parseInt(req.body.referenceId) : null;
+    const referenceType = req.body.referenceType || FileReferenceType.TICKET_ATTACHMENT;
+    const entityType = req.body.entityType || 
+                       (referenceType === FileReferenceType.TICKET_ATTACHMENT ? 'ticket' : 
+                        referenceType === FileReferenceType.COMPANY ? 'company' :
+                        referenceType === FileReferenceType.CONTRACT ? 'contract' : 'user');
+    
+    // If it's a ticket file and ticketId is provided, save to ticket-specific folder
+    if (entityType === 'ticket' && referenceId) {
+      const ticketDir = path.join(process.cwd(), 'public', 'WeFixFiles', 'tickets', String(referenceId));
+      if (!fs.existsSync(ticketDir)) {
+        fs.mkdirSync(ticketDir, { recursive: true });
+      }
+      cb(null, ticketDir);
+      return;
+    }
+    
+    // For contract files, save to Contracts folder
+    if (entityType === 'contract' || referenceType === FileReferenceType.CONTRACT) {
+      const contractsDir = path.join(process.cwd(), 'public', 'WeFixFiles', 'Contracts');
+      if (!fs.existsSync(contractsDir)) {
+        fs.mkdirSync(contractsDir, { recursive: true });
+      }
+      cb(null, contractsDir);
+      return;
+    }
+    
+    // Default: save to WeFixFiles root (will be moved later if needed)
     const uploadDir = path.join(process.cwd(), 'public', 'WeFixFiles');
-    // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -128,6 +154,12 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
     throw new AppError('referenceId (ticketId) is required for file upload', 400, 'VALIDATION_ERROR');
   }
   const referenceType = req.body.referenceType || FileReferenceType.TICKET_ATTACHMENT;
+  // Use entityType from request if provided, otherwise derive from referenceType
+  const entityType = req.body.entityType || 
+                     (referenceType === FileReferenceType.COMPANY ? 'company' : 
+                      referenceType === FileReferenceType.CONTRACT ? 'contract' : 
+                      referenceType === FileReferenceType.TICKET_ATTACHMENT ? 'ticket' :
+                      referenceType === FileReferenceType.USER ? 'user' : 'ticket');
 
   // Create file record in database with ALL required fields
   // Note: referenceType column doesn't exist in database, so we use entityType 'ticket' for ticket attachments
@@ -155,12 +187,23 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
     // Note: referenceType column doesn't exist in database, so we don't save it
   } as any) as any;
 
-  // Convert server file path to accessible URL
-  // Server path: /app/uploads/filename.ext or /path/to/app/uploads/filename.ext
-  // URL path: /uploads/filename.ext
-  const serverFilePath = (fileRecord as any).filePath || file.path;
-  const filename = serverFilePath.split('/').pop() || file.filename || '';
-  const fileUrl = filename ? `/uploads/${filename}` : '';
+  // Build public path based on entity type and ID
+  let publicPath: string;
+  if (entityType === 'ticket' && referenceId) {
+    publicPath = `/WeFixFiles/tickets/${referenceId}/${file.filename}`;
+  } else if (entityType === 'contract' || referenceType === FileReferenceType.CONTRACT) {
+    publicPath = `/WeFixFiles/Contracts/${file.filename}`;
+  } else {
+    publicPath = `/WeFixFiles/${file.filename}`;
+  }
+  
+  // Update file record with correct public path
+  await fileRecord.update({
+    path: publicPath,
+    filePath: publicPath,
+  } as any);
+  
+  const fileUrl = publicPath;
 
   res.status(201).json({
     success: true,
@@ -284,12 +327,21 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
       // We use entityType 'ticket' to identify ticket attachments
     } as any) as any;
 
-    // Convert server file path to accessible URL
-    // Server path: /app/uploads/filename.ext or /path/to/app/uploads/filename.ext
-    // URL path: /uploads/filename.ext
-    const serverFilePath = (fileRecord as any).filePath || file.path;
-    const filename = serverFilePath.split('/').pop() || file.filename || '';
-    const fileUrl = filename ? `/uploads/${filename}` : '';
+    // Build public path based on entity type and ID
+    let publicPath: string;
+    if (entityType === 'ticket' && entityId) {
+      publicPath = `/WeFixFiles/tickets/${entityId}/${file.filename}`;
+    } else if (entityType === 'contract' || referenceType === FileReferenceType.CONTRACT) {
+      publicPath = `/WeFixFiles/Contracts/${file.filename}`;
+    } else {
+      publicPath = `/WeFixFiles/${file.filename}`;
+    }
+    
+    // Update file record with correct public path
+    await fileRecord.update({
+      path: publicPath,
+      filePath: publicPath,
+    } as any);
 
     uploadedFiles.push({
       id: (fileRecord as any).id,
@@ -297,7 +349,7 @@ export const uploadMultipleFiles = asyncHandler(async (req: AuthRequest, res: Re
       fileExtension: (fileRecord as any).fileExtension,
       fileType: (fileRecord as any).fileType,
       fileSizeMB: (fileRecord as any).fileSizeMB,
-      filePath: fileUrl, // Use URL path instead of server path
+      filePath: publicPath, // Use public path
       referenceId: (fileRecord as any).entityId,
       referenceType,
       uploadedAt: (fileRecord as any).createdAt,

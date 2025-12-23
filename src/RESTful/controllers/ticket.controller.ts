@@ -1,4 +1,6 @@
 import { Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { Op } from 'sequelize';
 
 import { Branch } from '../../db/models/branch.model';
@@ -455,22 +457,20 @@ export const getTicketById = asyncHandler(async (req: AuthRequest, res: Response
   const ticketData = formatTicket(ticket);
   ticketData.tools = toolsWithNames;
   ticketData.files = ticketFiles.map(file => {
-    // Convert server file path to accessible URL
-    // Server path: /app/uploads/filename.ext or /path/to/app/uploads/filename.ext
-    // URL path: /uploads/filename.ext
-    const filePath = file.filePath ?? file.path ?? '';
+    // Use the path from database (should be /WeFixFiles/tickets/{ticketId}/filename)
+    // If path is not in correct format, construct it
+    let filePath = file.filePath ?? file.path ?? '';
     
-    // Extract filename from path
-    const filename = filePath.split('/').pop() || file.filename || '';
-    
-    // Build accessible URL: /uploads/filename
-    // This will be served by express.static('/uploads') route
-    const fileUrl = filename ? `/uploads/${filename}` : '';
+    // If path doesn't include /tickets/{ticketId}/, construct it
+    if (!filePath.includes(`/tickets/${ticket.id}/`)) {
+      const fileName = file.filename || filePath.split('/').pop() || '';
+      filePath = `/WeFixFiles/tickets/${ticket.id}/${fileName}`;
+    }
     
     return {
       id: file.id,
       fileName: file.originalFilename ?? file.filename ?? '',
-      filePath: fileUrl, // Use URL path instead of server path
+      filePath: filePath, // Use public path format
       fileSize: file.size ?? 0,
       category: file.category ?? 'other',
       createdAt: file.createdAt,
@@ -758,19 +758,52 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     createdBy: user.id,
   });
 
-  // Link files to ticket if fileIds are provided
+  // Link files to ticket and move to ticket folder if fileIds are provided
   if (fileIds && Array.isArray(fileIds) && fileIds.length > 0) {
-    // Update files to link them to this ticket
-    await File.update(
-      {
-        entityId: ticket.id, // Link to ticket using legacy column
+    // Get all files that need to be moved
+    const files = await File.findAll({
+      where: {
+        id: { [Op.in]: fileIds },
       },
-      {
-        where: {
-          id: { [Op.in]: fileIds },
-        },
+    });
+
+    // Create ticket-specific folder
+    const ticketFolder = path.join(process.cwd(), 'public', 'WeFixFiles', 'tickets', String(ticket.id));
+    if (!fs.existsSync(ticketFolder)) {
+      fs.mkdirSync(ticketFolder, { recursive: true });
+    }
+
+    // Move files and update paths
+    for (const file of files) {
+      const oldPath = (file as any).path || (file as any).filePath;
+      const fileName = (file as any).filename;
+      const newPath = `/WeFixFiles/tickets/${ticket.id}/${fileName}`;
+      const newFilePath = path.join(ticketFolder, fileName);
+
+      // If file exists at old location and not already in ticket folder, move it
+      if (oldPath && !oldPath.includes(`/tickets/${ticket.id}/`)) {
+        const oldFilePath = path.join(process.cwd(), 'public', oldPath.replace(/^\//, '').replace(/^WeFixFiles\//, 'WeFixFiles/'));
+        
+        // Also try direct path
+        let actualOldPath = oldFilePath;
+        if (!fs.existsSync(actualOldPath)) {
+          actualOldPath = path.join(process.cwd(), 'public', 'WeFixFiles', fileName);
+        }
+        
+        if (fs.existsSync(actualOldPath)) {
+          // Move file to ticket folder
+          fs.renameSync(actualOldPath, newFilePath);
+        }
       }
-    );
+
+      // Update file record with new path and link to ticket
+      await file.update({
+        entityId: ticket.id,
+        entityType: 'ticket',
+        path: newPath,
+        filePath: newPath,
+      } as any);
+    }
   }
 
   // Fetch created ticket with relations
@@ -1010,19 +1043,52 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
   await ticket.save();
 
-  // Link files to ticket if fileIds are provided
+  // Link files to ticket and move to ticket folder if fileIds are provided
   if (fileIds !== undefined && Array.isArray(fileIds) && fileIds.length > 0) {
-    // Update files to link them to this ticket
-    await File.update(
-      {
-        entityId: ticket.id, // Link to ticket using legacy column
+    // Get all files that need to be moved
+    const files = await File.findAll({
+      where: {
+        id: { [Op.in]: fileIds },
       },
-      {
-        where: {
-          id: { [Op.in]: fileIds },
-        },
+    });
+
+    // Create ticket-specific folder
+    const ticketFolder = path.join(process.cwd(), 'public', 'WeFixFiles', 'tickets', String(ticket.id));
+    if (!fs.existsSync(ticketFolder)) {
+      fs.mkdirSync(ticketFolder, { recursive: true });
+    }
+
+    // Move files and update paths
+    for (const file of files) {
+      const oldPath = (file as any).path || (file as any).filePath;
+      const fileName = (file as any).filename;
+      const newPath = `/WeFixFiles/tickets/${ticket.id}/${fileName}`;
+      const newFilePath = path.join(ticketFolder, fileName);
+
+      // If file exists at old location and not already in ticket folder, move it
+      if (oldPath && !oldPath.includes(`/tickets/${ticket.id}/`)) {
+        const oldFilePath = path.join(process.cwd(), 'public', oldPath.replace(/^\//, '').replace(/^WeFixFiles\//, 'WeFixFiles/'));
+        
+        // Also try direct path
+        let actualOldPath = oldFilePath;
+        if (!fs.existsSync(actualOldPath)) {
+          actualOldPath = path.join(process.cwd(), 'public', 'WeFixFiles', fileName);
+        }
+        
+        if (fs.existsSync(actualOldPath)) {
+          // Move file to ticket folder
+          fs.renameSync(actualOldPath, newFilePath);
+        }
       }
-    );
+
+      // Update file record with new path and link to ticket
+      await file.update({
+        entityId: ticket.id,
+        entityType: 'ticket',
+        path: newPath,
+        filePath: newPath,
+      } as any);
+    }
   }
 
   // Fetch updated ticket with relations

@@ -140,12 +140,39 @@ export class Server {
       }
       
       // Build full path matching the stored structure (e.g., /WeFixFiles/Images/xx.png -> public/WeFixFiles/Images/xx.png)
-      const filePath = path.join(process.cwd(), 'public', 'WeFixFiles', relativePath);
+      let filePath = path.join(process.cwd(), 'public', 'WeFixFiles', relativePath);
+      
+      // Check if file exists at the direct path first
+      if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+        // If not found, try checking in Contracts/, Images/, and tickets/ subdirectories
+        const fileName = path.basename(relativePath);
+        const contractsPath = path.join(uploadsDir, 'Contracts', fileName);
+        const imagesPath = path.join(uploadsDir, 'Images', fileName);
+        
+        // Check tickets folder structure: /tickets/{ticketId}/filename
+        const ticketsMatch = relativePath.match(/^tickets\/(\d+)\/(.+)$/);
+        if (ticketsMatch) {
+          const ticketId = ticketsMatch[1];
+          const ticketFileName = ticketsMatch[2];
+          const ticketPath = path.join(uploadsDir, 'tickets', ticketId, ticketFileName);
+          if (fs.existsSync(ticketPath) && fs.statSync(ticketPath).isFile()) {
+            filePath = ticketPath;
+          }
+        }
+        
+        if (fs.existsSync(contractsPath) && fs.statSync(contractsPath).isFile()) {
+          filePath = contractsPath;
+        } else if (fs.existsSync(imagesPath) && fs.statSync(imagesPath).isFile()) {
+          filePath = imagesPath;
+        }
+      }
       
       // Check if file exists locally FIRST (before checking proxy header)
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         // Set proper headers
-        if (filePath.endsWith('.m4a') || filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
+        if (filePath.endsWith('.m4a')) {
+          res.setHeader('Content-Type', 'audio/mp4');
+        } else if (filePath.endsWith('.mp3') || filePath.endsWith('.wav')) {
           res.setHeader('Content-Type', 'audio/mpeg');
         } else if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
           res.setHeader('Content-Type', 'video/mp4');
