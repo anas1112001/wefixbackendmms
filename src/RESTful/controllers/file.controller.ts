@@ -188,9 +188,15 @@ export const uploadFile = asyncHandler(async (req: AuthRequest, res: Response) =
   } as any) as any;
 
   // Build public path based on entity type and ID
+  // For ticket files, always use ticket-specific path
   let publicPath: string;
   if (entityType === 'ticket' && referenceId) {
     publicPath = `/WeFixFiles/tickets/${referenceId}/${file.filename}`;
+    // Update filePath in database to match the public path
+    await fileRecord.update({
+      filePath: publicPath,
+      path: publicPath,
+    } as any);
   } else if (entityType === 'contract' || referenceType === FileReferenceType.CONTRACT) {
     publicPath = `/WeFixFiles/Contracts/${file.filename}`;
   } else {

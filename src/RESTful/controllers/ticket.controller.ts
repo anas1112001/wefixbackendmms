@@ -776,23 +776,59 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     // Move files and update paths
     for (const file of files) {
       const oldPath = (file as any).path || (file as any).filePath;
-      const fileName = (file as any).filename;
+      const fileName = (file as any).filename || path.basename(oldPath || '');
       const newPath = `/WeFixFiles/tickets/${ticket.id}/${fileName}`;
       const newFilePath = path.join(ticketFolder, fileName);
 
-      // If file exists at old location and not already in ticket folder, move it
-      if (oldPath && !oldPath.includes(`/tickets/${ticket.id}/`)) {
-        const oldFilePath = path.join(process.cwd(), 'public', oldPath.replace(/^\//, '').replace(/^WeFixFiles\//, 'WeFixFiles/'));
+      // Skip if file is already in the correct location
+      if (fs.existsSync(newFilePath)) {
+        // File already in correct location, just update database
+      } else if (oldPath && !oldPath.includes(`/tickets/${ticket.id}/`)) {
+        // Files uploaded before ticket creation are saved to Contracts or Images
+        // Search in all possible locations
+        const searchPaths = [
+          // Try the path from database first
+          oldPath.startsWith('/') 
+            ? path.join(process.cwd(), 'public', oldPath.replace(/^\//, ''))
+            : path.join(process.cwd(), 'public', oldPath),
+          // Always check Contracts and Images folders
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Contracts', fileName),
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Images', fileName),
+        ];
         
-        // Also try direct path
-        let actualOldPath = oldFilePath;
-        if (!fs.existsSync(actualOldPath)) {
-          actualOldPath = path.join(process.cwd(), 'public', 'WeFixFiles', fileName);
+        let fileFound = false;
+        for (const searchPath of searchPaths) {
+          if (fs.existsSync(searchPath)) {
+            // Ensure destination directory exists
+            if (!fs.existsSync(ticketFolder)) {
+              fs.mkdirSync(ticketFolder, { recursive: true });
+            }
+            // Move file to ticket folder
+            fs.renameSync(searchPath, newFilePath);
+            fileFound = true;
+            break;
+          }
         }
         
-        if (fs.existsSync(actualOldPath)) {
-          // Move file to ticket folder
-          fs.renameSync(actualOldPath, newFilePath);
+        if (!fileFound) {
+          console.warn(`[CreateTicket-MMS] File not found at any expected location for: ${fileName}`);
+        }
+      } else if (!fs.existsSync(newFilePath)) {
+        // File path already points to ticket folder but file doesn't exist there
+        // Try to find it in Contracts/Images and move it
+        const searchPaths = [
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Contracts', fileName),
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Images', fileName),
+        ];
+        
+        for (const searchPath of searchPaths) {
+          if (fs.existsSync(searchPath)) {
+            if (!fs.existsSync(ticketFolder)) {
+              fs.mkdirSync(ticketFolder, { recursive: true });
+            }
+            fs.renameSync(searchPath, newFilePath);
+            break;
+          }
         }
       }
 
@@ -1061,23 +1097,59 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     // Move files and update paths
     for (const file of files) {
       const oldPath = (file as any).path || (file as any).filePath;
-      const fileName = (file as any).filename;
+      const fileName = (file as any).filename || path.basename(oldPath || '');
       const newPath = `/WeFixFiles/tickets/${ticket.id}/${fileName}`;
       const newFilePath = path.join(ticketFolder, fileName);
 
-      // If file exists at old location and not already in ticket folder, move it
-      if (oldPath && !oldPath.includes(`/tickets/${ticket.id}/`)) {
-        const oldFilePath = path.join(process.cwd(), 'public', oldPath.replace(/^\//, '').replace(/^WeFixFiles\//, 'WeFixFiles/'));
+      // Skip if file is already in the correct location
+      if (fs.existsSync(newFilePath)) {
+        // File already in correct location, just update database
+      } else if (oldPath && !oldPath.includes(`/tickets/${ticket.id}/`)) {
+        // Files uploaded before ticket update are saved to Contracts or Images
+        // Search in all possible locations
+        const searchPaths = [
+          // Try the path from database first
+          oldPath.startsWith('/') 
+            ? path.join(process.cwd(), 'public', oldPath.replace(/^\//, ''))
+            : path.join(process.cwd(), 'public', oldPath),
+          // Always check Contracts and Images folders
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Contracts', fileName),
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Images', fileName),
+        ];
         
-        // Also try direct path
-        let actualOldPath = oldFilePath;
-        if (!fs.existsSync(actualOldPath)) {
-          actualOldPath = path.join(process.cwd(), 'public', 'WeFixFiles', fileName);
+        let fileFound = false;
+        for (const searchPath of searchPaths) {
+          if (fs.existsSync(searchPath)) {
+            // Ensure destination directory exists
+            if (!fs.existsSync(ticketFolder)) {
+              fs.mkdirSync(ticketFolder, { recursive: true });
+            }
+            // Move file to ticket folder
+            fs.renameSync(searchPath, newFilePath);
+            fileFound = true;
+            break;
+          }
         }
         
-        if (fs.existsSync(actualOldPath)) {
-          // Move file to ticket folder
-          fs.renameSync(actualOldPath, newFilePath);
+        if (!fileFound) {
+          console.warn(`[UpdateTicket-MMS] File not found at any expected location for: ${fileName}`);
+        }
+      } else if (!fs.existsSync(newFilePath)) {
+        // File path already points to ticket folder but file doesn't exist there
+        // Try to find it in Contracts/Images and move it
+        const searchPaths = [
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Contracts', fileName),
+          path.join(process.cwd(), 'public', 'WeFixFiles', 'Images', fileName),
+        ];
+        
+        for (const searchPath of searchPaths) {
+          if (fs.existsSync(searchPath)) {
+            if (!fs.existsSync(ticketFolder)) {
+              fs.mkdirSync(ticketFolder, { recursive: true });
+            }
+            fs.renameSync(searchPath, newFilePath);
+            break;
+          }
         }
       }
 
