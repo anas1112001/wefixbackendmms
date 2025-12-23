@@ -745,7 +745,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     ticketTimeTo, // Emergency tickets now have time slots (current time + 120 minutes)
     assignToTeamLeaderId,
     assignToTechnicianId,
-    ticketDescription: ticketDescription || null,
+    ticketDescription: ticketDescription || '',
     havingFemaleEngineer: havingFemaleEngineer || false,
     customerName: customerName || null,
     withMaterial: withMaterial || false,
@@ -994,7 +994,7 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
   if (ticketTimeTo !== undefined && !isTechnician) ticket.ticketTimeTo = ticketTimeTo;
   if (assignToTeamLeaderId !== undefined && !isTechnician) ticket.assignToTeamLeaderId = assignToTeamLeaderId;
   if (assignToTechnicianId !== undefined && !isTechnician) ticket.assignToTechnicianId = assignToTechnicianId;
-  if (ticketDescription !== undefined && !isTechnician) ticket.ticketDescription = ticketDescription;
+  if (ticketDescription !== undefined && !isTechnician) ticket.ticketDescription = ticketDescription || '';
   if (havingFemaleEngineer !== undefined && !isTechnician) ticket.havingFemaleEngineer = havingFemaleEngineer;
   if (customerName !== undefined && !isTechnician) ticket.customerName = customerName;
   if (withMaterial !== undefined && !isTechnician) ticket.withMaterial = withMaterial;
