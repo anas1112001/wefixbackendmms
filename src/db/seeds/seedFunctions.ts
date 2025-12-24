@@ -1123,7 +1123,6 @@ export const seedTickets = async (force: boolean = false): Promise<void> => {
         const contract = contracts[i % contracts.length];
         const branch = branches[i % branches.length];
         const zone = zones[i % zones.length];
-        const ticketCode = ticketCodes[i % ticketCodes.length];
         const ticketType = ticketTypes[i % ticketTypes.length];
         const ticketStatus = ticketStatuses[i % ticketStatuses.length];
         const teamLeader = teamLeaders[i % teamLeaders.length];
@@ -1138,8 +1137,9 @@ export const seedTickets = async (force: boolean = false): Promise<void> => {
           throw new Error(`No technician available for ticket ${i + 1}`);
         }
 
-        await Ticket.create({
-          ticketCodeId: ticketCode.id,
+        // Create ticket first (we need the ticket ID to generate the code)
+        const ticket = await Ticket.create({
+          ticketCodeId: 'TEMP', // Temporary value, will be updated after creation
           companyId: company.id,
           contractId: contract.id,
           branchId: branch.id,
@@ -1159,6 +1159,14 @@ export const seedTickets = async (force: boolean = false): Promise<void> => {
           serviceDescription: ticketData.serviceDescription,
           tools: ticketData.tools,
         });
+
+        // Generate ticket code (format: {COMPANY_NAME}-TKT-{TICKET_ID})
+        // Extract company name from title and convert to uppercase (e.g., "gamma solutions" -> "GAMMA")
+        const companyName = company.title.toUpperCase().split(' ')[0]; // Take first word and uppercase
+        const ticketCodeId = `${companyName}-TKT-${ticket.id}`;
+        
+        // Update ticket with the generated code
+        await ticket.update({ ticketCodeId });
 
         createdCount++;
       } catch (error: any) {

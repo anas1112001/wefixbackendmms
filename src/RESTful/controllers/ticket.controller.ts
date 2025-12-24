@@ -720,20 +720,15 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('Default ticket status not found', 500, 'INTERNAL_ERROR');
   }
 
-  // Generate ticket code (format: COMPANY-TKT-001)
-  // This is a simple implementation - you may want to make this more sophisticated
+  // Get company for ticket code generation
   const company = await Company.findByPk(companyId);
-  const companyShortCode = company?.ticketShortCode || 'COMP';
-  const lastTicket = await Ticket.findOne({
-    where: { companyId },
-    order: [['createdAt', 'DESC']],
-  });
-  const ticketNumber = lastTicket ? parseInt(lastTicket.ticketCodeId.split('-').pop() || '0') + 1 : 1;
-  const ticketCodeId = `${companyShortCode}-TKT-${ticketNumber.toString().padStart(3, '0')}`;
+  if (!company) {
+    throw new AppError('Company not found', 400, 'VALIDATION_ERROR');
+  }
 
-  // Create ticket
+  // Create ticket first (we need the ticket ID to generate the code)
   const ticket = await Ticket.create({
-    ticketCodeId,
+    ticketCodeId: 'TEMP', // Temporary value, will be updated after creation
     companyId,
     contractId,
     branchId,
@@ -757,6 +752,14 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     source: 'Mobile', // Set source to Mobile for tickets created from mobile app (backend-mms)
     createdBy: user.id,
   });
+
+  // Generate ticket code (format: {COMPANY_NAME}-TKT-{TICKET_ID})
+  // Extract company name from title and convert to uppercase (e.g., "gamma solutions" -> "GAMMA")
+  const companyName = company.title.toUpperCase().split(' ')[0]; // Take first word and uppercase
+  const ticketCodeId = `${companyName}-TKT-${ticket.id}`;
+  
+  // Update ticket with the generated code
+  await ticket.update({ ticketCodeId });
 
   // Link files to ticket and move to ticket folder if fileIds are provided
   if (fileIds && Array.isArray(fileIds) && fileIds.length > 0) {
