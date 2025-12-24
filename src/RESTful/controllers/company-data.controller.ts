@@ -68,17 +68,60 @@ export const getCompanyBranches = asyncHandler(async (req: AuthRequest, res: Res
       companyId,
       isDeleted: false,
     },
+    include: [
+      {
+        model: Lookup,
+        as: 'teamLeaderLookup',
+        required: false,
+        attributes: ['id', 'name', 'nameArabic', 'code'],
+      },
+    ],
     order: [['createdAt', 'DESC']],
   });
 
-  const formattedBranches = branches.map((branch) => ({
-    id: branch.id,
-    title: branch.branchTitle,
-    subtitle: branch.branchNameArabic || branch.branchNameEnglish || '',
-    branchTitle: branch.branchTitle,
-    branchNameArabic: branch.branchNameArabic,
-    branchNameEnglish: branch.branchNameEnglish,
-  }));
+  const formattedBranches = branches.map((branch) => {
+    // Parse location to extract latitude and longitude if it's a Google Maps URL
+    let latitude: string | null = null;
+    let longitude: string | null = null;
+    
+    if (branch.location) {
+      // Try to extract coordinates from Google Maps URL format: https://maps.google.com/?q=lat,lng
+      const urlMatch = branch.location.match(/[?&]q=([0-9.]+),([0-9.]+)/);
+      if (urlMatch && urlMatch[1] && urlMatch[2]) {
+        latitude = urlMatch[1];
+        longitude = urlMatch[2];
+      }
+      // Also try format: ?q=lat,lng&ll=lat,lng
+      const llMatch = branch.location.match(/[?&]ll=([0-9.]+),([0-9.]+)/);
+      if (llMatch && llMatch[1] && llMatch[2] && !latitude) {
+        latitude = llMatch[1];
+        longitude = llMatch[2];
+      }
+    }
+
+    return {
+      id: branch.id,
+      title: branch.branchTitle,
+      subtitle: branch.branchNameArabic || branch.branchNameEnglish || '',
+      branchTitle: branch.branchTitle,
+      branchNameArabic: branch.branchNameArabic,
+      branchNameEnglish: branch.branchNameEnglish,
+      branchRepresentativeName: branch.branchRepresentativeName,
+      representativeMobileNumber: branch.representativeMobileNumber,
+      representativeEmailAddress: branch.representativeEmailAddress,
+      teamLeaderLookupId: branch.teamLeaderLookupId,
+      teamLeader: branch.teamLeaderLookup ? {
+        id: branch.teamLeaderLookup.id,
+        name: branch.teamLeaderLookup.name,
+        nameArabic: branch.teamLeaderLookup.nameArabic,
+        code: branch.teamLeaderLookup.code,
+      } : null,
+      location: branch.location,
+      latitude: latitude,
+      longitude: longitude,
+      companyId: branch.companyId,
+    };
+  });
 
   res.status(200).json({
     success: true,
