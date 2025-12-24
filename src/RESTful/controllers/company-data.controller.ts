@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Op } from 'sequelize';
 
 import { Branch } from '../../db/models/branch.model';
+import { Company } from '../../db/models/company.model';
 import { Contract } from '../../db/models/contract.model';
 import { Lookup, LookupCategory } from '../../db/models/lookup.model';
 import { Zone } from '../../db/models/zone.model';
@@ -73,7 +74,13 @@ export const getCompanyBranches = asyncHandler(async (req: AuthRequest, res: Res
         model: Lookup,
         as: 'teamLeaderLookup',
         required: false,
-        attributes: ['id', 'name', 'nameArabic', 'code'],
+        attributes: ['id', 'name', 'nameArabic', 'code', 'description'],
+      },
+      {
+        model: Company,
+        as: 'company',
+        required: false,
+        attributes: ['id', 'companyId', 'title', 'companyNameEnglish', 'companyNameArabic', 'hoAddress'],
       },
     ],
     order: [['createdAt', 'DESC']],
@@ -115,11 +122,20 @@ export const getCompanyBranches = asyncHandler(async (req: AuthRequest, res: Res
         name: branch.teamLeaderLookup.name,
         nameArabic: branch.teamLeaderLookup.nameArabic,
         code: branch.teamLeaderLookup.code,
+        description: branch.teamLeaderLookup.description,
       } : null,
       location: branch.location,
       latitude: latitude,
       longitude: longitude,
       companyId: branch.companyId,
+      company: branch.company ? {
+        id: branch.company.id,
+        companyId: branch.company.companyId,
+        title: branch.company.title,
+        name: branch.company.companyNameEnglish || branch.company.companyNameArabic || branch.company.title || null,
+        nameArabic: branch.company.companyNameArabic || null,
+        hoAddress: branch.company.hoAddress || null,
+      } : null,
     };
   });
 
