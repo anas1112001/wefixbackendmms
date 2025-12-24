@@ -9,6 +9,7 @@ import {
   seedMaintenanceServices,
   seedNewStates,
   seedTickets,
+  updateBranchesTeamLeaderLookupIds,
   seedUsers,
   seedZones,
 } from './seedFunctions';
@@ -145,6 +146,9 @@ export const runSeed = async (seedName: string, force: boolean = false): Promise
         break;
       case 'branches':
         await seedBranches(force);
+        break;
+      case 'updateBranchesTeamLeaders':
+        await updateBranchesTeamLeaderLookupIds();
         break;
       case 'zones':
         await seedZones(force);

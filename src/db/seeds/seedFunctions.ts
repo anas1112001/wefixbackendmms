@@ -21,6 +21,7 @@ import { Contract } from '../models/contract.model';
 import { CompanyStatus } from '../models/enums';
 import { File, FileCategory, FileEntityType } from '../models/file.model';
 import { Lookup, LookupCategory } from '../models/lookup.model';
+import { Op } from 'sequelize';
 import { MaintenanceService } from '../models/maintenance-service.model';
 import { Ticket } from '../models/ticket.model';
 import { User } from '../models/user.model';
@@ -853,10 +854,59 @@ export const seedBranches = async (force: boolean = false): Promise<void> => {
       companyIdMap.set(index + 1, company.id);
     });
 
+    // Get all team leader users grouped by company
+    const teamLeadersByCompany = new Map<number, User[]>();
+    const allTeamLeaders = await User.findAll({
+      where: {
+        userRoleId: 20, // Team Leader role ID
+        isDeleted: false,
+        isActive: true,
+      },
+      order: [['id', 'ASC']],
+    });
+
+    // Group team leaders by company
+    for (const teamLeader of allTeamLeaders) {
+      if (teamLeader.companyId) {
+        if (!teamLeadersByCompany.has(teamLeader.companyId)) {
+          teamLeadersByCompany.set(teamLeader.companyId, []);
+        }
+        teamLeadersByCompany.get(teamLeader.companyId)!.push(teamLeader);
+      }
+    }
+
+    // Get or find COMPANY_ROLE or USER_ROLE lookup for TEAMLEADER
+    let teamLeaderLookup = await Lookup.findOne({
+      where: {
+        code: 'TEAMLEADER',
+        isActive: true,
+      },
+    });
+
+    // If TEAMLEADER lookup doesn't exist, try to find any lookup for team leaders
+    if (!teamLeaderLookup) {
+      teamLeaderLookup = await Lookup.findOne({
+        where: {
+          name: { [Op.iLike]: '%team%leader%' },
+          isActive: true,
+        },
+      });
+    }
+
     let createdCount = 0;
     for (const branchData of BRANCHES_DATA) {
       try {
         const actualCompanyId = companyIdMap.get(branchData.companyId) || companies[0].id;
+
+        // Find team leaders for this company
+        const companyTeamLeaders = teamLeadersByCompany.get(actualCompanyId) || [];
+        
+        // Assign team leader lookup ID if available
+        // Use the USER_ROLE lookup for TEAMLEADER if team leaders exist for this company
+        let assignedTeamLeaderLookupId: number | null = null;
+        if (companyTeamLeaders.length > 0 && teamLeaderLookup) {
+          assignedTeamLeaderLookupId = teamLeaderLookup.id;
+        }
 
         await Branch.create({
           branchTitle: branchData.branchTitle,
@@ -866,7 +916,7 @@ export const seedBranches = async (force: boolean = false): Promise<void> => {
           representativeMobileNumber: null,
           representativeEmailAddress: null,
           companyId: actualCompanyId,
-          teamLeaderLookupId: null,
+          teamLeaderLookupId: assignedTeamLeaderLookupId,
           isActive: branchData.isActive,
           location: branchData.locationMap || null,
         });
@@ -878,8 +928,96 @@ export const seedBranches = async (force: boolean = false): Promise<void> => {
     }
 
     console.log(`   ✅ Seeded ${createdCount} branches`);
+    
+    // Update existing branches with team leader lookup IDs
+    await updateBranchesTeamLeaderLookupIds();
   } catch (error: any) {
     console.error('   ❌ Error seeding branches:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Update existing branches with team leader lookup IDs based on company team leaders
+ */
+export const updateBranchesTeamLeaderLookupIds = async (): Promise<void> => {
+  try {
+    console.log('\n🔄 Updating branches with team leader lookup IDs...');
+
+    // Get all branches
+    const branches = await Branch.findAll({
+      where: { isDeleted: false },
+      include: [{ model: Company, as: 'company', required: true }],
+    });
+
+    if (branches.length === 0) {
+      console.log('   ℹ️  No branches found to update');
+      return;
+    }
+
+    // Get all team leader users grouped by company
+    const teamLeadersByCompany = new Map<number, User[]>();
+    const allTeamLeaders = await User.findAll({
+      where: {
+        userRoleId: 20, // Team Leader role ID
+        isDeleted: false,
+        isActive: true,
+      },
+      order: [['id', 'ASC']],
+    });
+
+    // Group team leaders by company
+    for (const teamLeader of allTeamLeaders) {
+      if (teamLeader.companyId) {
+        if (!teamLeadersByCompany.has(teamLeader.companyId)) {
+          teamLeadersByCompany.set(teamLeader.companyId, []);
+        }
+        teamLeadersByCompany.get(teamLeader.companyId)!.push(teamLeader);
+      }
+    }
+
+    // Get or find COMPANY_ROLE or USER_ROLE lookup for TEAMLEADER
+    let teamLeaderLookup = await Lookup.findOne({
+      where: {
+        code: 'TEAMLEADER',
+        isActive: true,
+      },
+    });
+
+    // If TEAMLEADER lookup doesn't exist, try to find any lookup for team leaders
+    if (!teamLeaderLookup) {
+      teamLeaderLookup = await Lookup.findOne({
+        where: {
+          name: { [Op.iLike]: '%team%leader%' },
+          isActive: true,
+        },
+      });
+    }
+
+    if (!teamLeaderLookup) {
+      console.log('   ⚠️  No team leader lookup found. Skipping update.');
+      return;
+    }
+
+    let updatedCount = 0;
+    for (const branch of branches) {
+      const companyId = branch.companyId;
+      const companyTeamLeaders = teamLeadersByCompany.get(companyId) || [];
+
+      // Update branch with team leader lookup ID if team leaders exist for this company
+      if (companyTeamLeaders.length > 0 && branch.teamLeaderLookupId !== teamLeaderLookup.id) {
+        await branch.update({ teamLeaderLookupId: teamLeaderLookup.id });
+        updatedCount++;
+      } else if (companyTeamLeaders.length === 0 && branch.teamLeaderLookupId !== null) {
+        // Remove team leader lookup ID if no team leaders exist for this company
+        await branch.update({ teamLeaderLookupId: null });
+        updatedCount++;
+      }
+    }
+
+    console.log(`   ✅ Updated ${updatedCount} branches with team leader lookup IDs`);
+  } catch (error: any) {
+    console.error('   ❌ Error updating branches with team leader lookup IDs:', error.message);
     throw error;
   }
 };
