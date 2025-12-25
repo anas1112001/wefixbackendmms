@@ -646,14 +646,29 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
 
   // Validation - Emergency tickets now have time slots (current time + 120 minutes)
   // Ticket title is required
-  const baseRequiredFields = !contractId || !branchId || !zoneId || 
-                             !ticketTypeId || !ticketDate || !ticketTimeFrom || !ticketTimeTo ||
-                             !assignToTeamLeaderId || !assignToTechnicianId || !mainServiceId || !ticketTitle;
+  const missingFields: string[] = [];
+  
+  if (!contractId) missingFields.push('contractId');
+  if (!branchId) missingFields.push('branchId');
+  if (!zoneId) missingFields.push('zoneId');
+  if (!ticketTypeId) missingFields.push('ticketTypeId');
+  if (!ticketDate) missingFields.push('ticketDate');
+  if (!ticketTimeFrom) missingFields.push('ticketTimeFrom');
+  if (!ticketTimeTo) missingFields.push('ticketTimeTo');
+  if (!assignToTeamLeaderId) missingFields.push('assignToTeamLeaderId');
+  if (!assignToTechnicianId) missingFields.push('assignToTechnicianId');
+  if (!mainServiceId) missingFields.push('mainServiceId');
+  if (!ticketTitle || ticketTitle.trim() === '') missingFields.push('ticketTitle');
   
   // Location map and location description are optional (can be null)
   
-  if (baseRequiredFields) {
-    throw new AppError('Missing required fields', 400, 'VALIDATION_ERROR');
+  if (missingFields.length > 0) {
+    throw new AppError(
+      `Missing required fields: ${missingFields.join(', ')}`,
+      400,
+      'VALIDATION_ERROR',
+      { missingFields }
+    );
   }
 
   // Role-based validation: Team Leaders CANNOT create tickets for another Team Leader
