@@ -684,8 +684,7 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError(
       `Missing required fields: ${missingFields.join(', ')}`,
       400,
-      'VALIDATION_ERROR',
-      { missingFields }
+      'VALIDATION_ERROR'
     );
   }
 
