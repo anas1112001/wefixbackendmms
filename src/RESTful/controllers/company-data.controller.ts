@@ -107,12 +107,12 @@ export const getCompanyBranches = asyncHandler(async (req: AuthRequest, res: Res
     }
 
     return {
-      id: branch.id,
-      title: branch.branchTitle,
-      subtitle: branch.branchNameArabic || branch.branchNameEnglish || '',
-      branchTitle: branch.branchTitle,
-      branchNameArabic: branch.branchNameArabic,
-      branchNameEnglish: branch.branchNameEnglish,
+    id: branch.id,
+    title: branch.branchTitle,
+    subtitle: branch.branchNameArabic || branch.branchNameEnglish || '',
+    branchTitle: branch.branchTitle,
+    branchNameArabic: branch.branchNameArabic,
+    branchNameEnglish: branch.branchNameEnglish,
       branchRepresentativeName: branch.branchRepresentativeName,
       representativeMobileNumber: branch.representativeMobileNumber,
       representativeEmailAddress: branch.representativeEmailAddress,

@@ -660,6 +660,24 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
   if (!mainServiceId) missingFields.push('mainServiceId');
   if (!ticketTitle || ticketTitle.trim() === '') missingFields.push('ticketTitle');
   
+  // Validate ticketTitle length (max 100 characters)
+  if (ticketTitle && ticketTitle.trim().length > 100) {
+    throw new AppError(
+      'Ticket Title must not exceed 100 characters',
+      400,
+      'VALIDATION_ERROR'
+    );
+  }
+  
+  // Validate ticketDescription length (max 300 characters)
+  if (ticketDescription && ticketDescription.trim().length > 300) {
+    throw new AppError(
+      'Ticket Description must not exceed 300 characters',
+      400,
+      'VALIDATION_ERROR'
+    );
+  }
+  
   // Location map and location description are optional (can be null)
   
   if (missingFields.length > 0) {
@@ -1070,6 +1088,24 @@ export const updateTicket = asyncHandler(async (req: AuthRequest, res: Response)
     if (technician.userRoleId === 18 || technician.userRoleId === 20) {
       throw new AppError('Assigned user cannot be an Admin or Team Leader', 400, 'VALIDATION_ERROR');
     }
+  }
+
+  // Validate ticketTitle length (max 100 characters) if being updated
+  if (ticketTitle !== undefined && ticketTitle.trim().length > 100) {
+    throw new AppError(
+      'Ticket Title must not exceed 100 characters',
+      400,
+      'VALIDATION_ERROR'
+    );
+  }
+
+  // Validate ticketDescription length (max 300 characters) if being updated
+  if (ticketDescription !== undefined && ticketDescription.trim().length > 300) {
+    throw new AppError(
+      'Ticket Description must not exceed 300 characters',
+      400,
+      'VALIDATION_ERROR'
+    );
   }
 
   // Update other fields (only for Admin/Team Leader/Super User, Technicians can only update status and notes)
